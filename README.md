@@ -71,6 +71,8 @@ npx supabase db query --linked --project-ref SEU_PROJECT_REF -f supabase/migrati
 npx supabase db query --linked --project-ref SEU_PROJECT_REF -f supabase/seed.sql
 ```
 
+Reexecutar o `seed.sql` recria restaurantes e usuários de exemplo com IDs novos: sessões abertas com um usuário de exemplo deixam de funcionar (saia e entre de novo).
+
 O `seed.sql` carrega 20 estabelecimentos reais de Paulo Afonso/BA (OpenStreetMap), 10 restaurantes fictícios de exemplo e 30 usuários fictícios (`*@exemplo.compassoculinario.app`, senha `senha123`) com avaliações geradas em três perfis de gosto, para que a recomendação tenha vizinhos na demonstração.
 
 ## Como executar

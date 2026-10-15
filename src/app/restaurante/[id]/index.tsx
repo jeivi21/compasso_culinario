@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AvaliacaoItem } from '@/components/avaliacao-item';
+import { BotoesMarcacao } from '@/components/botoes-marcacao';
 import { Button } from '@/components/button';
 import { NotaCriterio } from '@/components/nota-criterio';
 import { Screen } from '@/components/screen';
@@ -24,6 +25,7 @@ export default function RestauranteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [detalhes, setDetalhes] = useState<DetalhesRestaurante | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroMarcacao, setErroMarcacao] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
 
   // Recarrega sempre que a tela volta ao foco (ex.: depois de criar ou editar uma avaliação).
@@ -109,10 +111,20 @@ export default function RestauranteScreen() {
             <NotaCriterio label="Ambiente" nota={detalhes.resumo.media_ambiente} />
           </View>
 
-          <Button
-            title={minhaAvaliacao ? 'Editar minha avaliação' : 'Avaliar este restaurante'}
-            onPress={() => router.push(`/restaurante/${id}/avaliar`)}
-          />
+          <View style={styles.acoes}>
+            <Button
+              title={minhaAvaliacao ? 'Editar minha avaliação' : 'Avaliar este restaurante'}
+              onPress={() => router.push(`/restaurante/${id}/avaliar`)}
+            />
+            {session ? (
+              <BotoesMarcacao usuarioId={session.user.id} restauranteId={id} onErro={setErroMarcacao} />
+            ) : null}
+            {erroMarcacao ? (
+              <ThemedText type="small" themeColor="danger" style={styles.erroMarcacao}>
+                {erroMarcacao}
+              </ThemedText>
+            ) : null}
+          </View>
 
           {minhaAvaliacao ? (
             <View style={styles.secao}>
@@ -171,6 +183,12 @@ const styles = StyleSheet.create({
   notaGrande: {
     fontSize: 44,
     lineHeight: 50,
+  },
+  acoes: {
+    gap: Spacing.two,
+  },
+  erroMarcacao: {
+    textAlign: 'center',
   },
   secao: {
     gap: Spacing.two,
