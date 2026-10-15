@@ -61,6 +61,18 @@ favorito (id PK, usuario_id FK, restaurante_id FK, tipo)
 - `usuario` 1:N `favorito` N:1 `restaurante`
 - `categoria` 1:N `restaurante`
 
+Detalhes do esquema em `supabase/migrations/`: `nota_geral` é a média dos quatro critérios (coluna gerada), a busca por raio usa PostGIS (`restaurantes_proximos(lat, lng, raio_m)`), a view `restaurante_resumo` agrega as notas, e todas as tabelas têm RLS ligado.
+
+### Criar o banco em um projeto Supabase novo
+
+```bash
+npx supabase login
+npx supabase db query --linked --project-ref SEU_PROJECT_REF -f supabase/migrations/20261015120000_schema_inicial.sql
+npx supabase db query --linked --project-ref SEU_PROJECT_REF -f supabase/seed.sql
+```
+
+O `seed.sql` carrega 20 estabelecimentos reais de Paulo Afonso/BA (OpenStreetMap), 10 restaurantes fictícios de exemplo e 30 usuários fictícios (`*@exemplo.compassoculinario.app`, senha `senha123`) com avaliações geradas em três perfis de gosto, para que a recomendação tenha vizinhos na demonstração.
+
 ## Como executar
 
 Pré-requisitos: Node.js e o app Expo Go no celular (ou um emulador).
