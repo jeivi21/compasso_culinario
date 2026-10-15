@@ -15,11 +15,11 @@ import { useEffect } from 'react';
 
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
   const [fontsLoaded, fontsError] = useFonts({
     Fredoka_500Medium,
     Fredoka_600SemiBold,
@@ -28,13 +28,29 @@ export default function RootLayout() {
     NunitoSans_700Bold,
   });
 
+  if (!fontsLoaded && !fontsError) {
+    return null;
+  }
+
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
+  );
+}
+
+function RootNavigator() {
+  const scheme = useColorScheme();
+  const { session, isLoading } = useAuth();
+
   useEffect(() => {
-    if (fontsLoaded || fontsError) {
+    // Só esconde a splash quando fontes e sessão estão prontas, evitando piscar a tela de login.
+    if (!isLoading) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontsError]);
+  }, [isLoading]);
 
-  if (!fontsLoaded && !fontsError) {
+  if (isLoading) {
     return null;
   }
 
@@ -56,7 +72,12 @@ export default function RootLayout() {
     <ThemeProvider value={navigationTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
+        <Stack.Protected guard={!!session}>
+          <Stack.Screen name="(tabs)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!session}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
       </Stack>
     </ThemeProvider>
   );
