@@ -29,6 +29,85 @@ export async function buscarRestaurantesProximos(
   return (data ?? []) as RestauranteProximo[];
 }
 
+export type Restaurante = {
+  id: string;
+  nome: string;
+  endereco: string | null;
+  faixa_preco: number | null;
+  telefone: string | null;
+  latitude: number;
+  longitude: number;
+  fonte: 'osm' | 'manual';
+  categoria: { nome: string; icone: string | null } | null;
+};
+
+export type ResumoNotas = {
+  total_avaliacoes: number;
+  media_geral: number | null;
+  media_comida: number | null;
+  media_atendimento: number | null;
+  media_preco: number | null;
+  media_ambiente: number | null;
+};
+
+export type Avaliacao = {
+  id: string;
+  usuario_id: string;
+  restaurante_id: string;
+  comida: number;
+  atendimento: number;
+  preco: number;
+  ambiente: number;
+  nota_geral: number;
+  comentario: string | null;
+  foto_url: string | null;
+  criado_em: string;
+  usuario: { nome: string } | null;
+};
+
+export type DetalhesRestaurante = {
+  restaurante: Restaurante;
+  resumo: ResumoNotas;
+  avaliacoes: Avaliacao[];
+};
+
+const RESUMO_VAZIO: ResumoNotas = {
+  total_avaliacoes: 0,
+  media_geral: null,
+  media_comida: null,
+  media_atendimento: null,
+  media_preco: null,
+  media_ambiente: null,
+};
+
+export async function buscarDetalhesRestaurante(id: string): Promise<DetalhesRestaurante> {
+  const [restaurante, resumo, avaliacoes] = await Promise.all([
+    supabase
+      .from('restaurante')
+      .select('id, nome, endereco, faixa_preco, telefone, latitude, longitude, fonte, categoria(nome, icone)')
+      .eq('id', id)
+      .single(),
+    supabase.from('restaurante_resumo').select('*').eq('restaurante_id', id).maybeSingle(),
+    supabase
+      .from('avaliacao')
+      .select('*, usuario(nome)')
+      .eq('restaurante_id', id)
+      .order('criado_em', { ascending: false }),
+  ]);
+  if (restaurante.error) throw restaurante.error;
+  if (resumo.error) throw resumo.error;
+  if (avaliacoes.error) throw avaliacoes.error;
+  return {
+    restaurante: restaurante.data as unknown as Restaurante,
+    resumo: (resumo.data as ResumoNotas | null) ?? RESUMO_VAZIO,
+    avaliacoes: (avaliacoes.data ?? []) as unknown as Avaliacao[],
+  };
+}
+
+export function formatarData(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 export function formatarFaixaPreco(faixa: number | null): string {
   if (!faixa) return '';
   return '$'.repeat(Math.min(4, Math.max(1, faixa)));

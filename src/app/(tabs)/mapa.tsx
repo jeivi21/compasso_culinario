@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -121,13 +122,22 @@ export default function MapaScreen() {
       </View>
     );
   } else if (visao === 'mapa') {
-    conteudo = <MapaRestaurantes centro={coords} raioMetros={raio} restaurantes={restaurantes} />;
+    conteudo = (
+      <MapaRestaurantes
+        centro={coords}
+        raioMetros={raio}
+        restaurantes={restaurantes}
+        onSelecionar={(r) => router.push(`/restaurante/${r.id}`)}
+      />
+    );
   } else {
     conteudo = (
       <FlatList
         data={restaurantes}
         keyExtractor={(r) => r.id}
-        renderItem={({ item }) => <RestauranteCard restaurante={item} />}
+        renderItem={({ item }) => (
+          <RestauranteCard restaurante={item} onPress={() => router.push(`/restaurante/${item.id}`)} />
+        )}
         contentContainerStyle={styles.lista}
         ItemSeparatorComponent={() => <View style={styles.separador} />}
         refreshControl={<RefreshControl refreshing={false} onRefresh={carregar} tintColor={theme.primary} />}

@@ -13,7 +13,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 
@@ -74,6 +74,14 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="restaurante/[id]"
+            options={{
+              headerShown: true,
+              headerTitleStyle: { fontFamily: Fonts.display, fontSize: 18 },
+              headerTintColor: colors.primaryDark,
+            }}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)" />
