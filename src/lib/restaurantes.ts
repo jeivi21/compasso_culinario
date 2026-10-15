@@ -224,6 +224,33 @@ export async function salvarAvaliacoesRapidas(usuarioId: string, notas: { restau
   if (error) throw error;
 }
 
+export type Categoria = { id: number; nome: string; icone: string | null };
+
+export async function buscarCategorias(): Promise<Categoria[]> {
+  const { data, error } = await supabase.from('categoria').select('id, nome, icone').order('nome');
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type Filtros = {
+  categoriaId: number | null;
+  /** Faixas de preço aceitas (1–4); vazio = todas. */
+  faixasPreco: number[];
+};
+
+export const FILTROS_VAZIOS: Filtros = { categoriaId: null, faixasPreco: [] };
+
+/** Aplica os filtros de categoria e preço em memória (a busca por raio já veio do banco). */
+export function aplicarFiltros(restaurantes: RestauranteProximo[], filtros: Filtros): RestauranteProximo[] {
+  return restaurantes.filter((r) => {
+    if (filtros.categoriaId !== null && r.categoria_id !== filtros.categoriaId) return false;
+    if (filtros.faixasPreco.length > 0 && (r.faixa_preco === null || !filtros.faixasPreco.includes(r.faixa_preco))) {
+      return false;
+    }
+    return true;
+  });
+}
+
 export function formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }

@@ -12,7 +12,16 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useLocalizacao } from '@/lib/location';
-import { buscarRestaurantesProximos, type RestauranteProximo } from '@/lib/restaurantes';
+import {
+  aplicarFiltros,
+  buscarCategorias,
+  buscarRestaurantesProximos,
+  FILTROS_VAZIOS,
+  type Categoria,
+  type Filtros,
+  type RestauranteProximo,
+} from '@/lib/restaurantes';
+import { BarraFiltros } from '@/components/barra-filtros';
 
 const RAIOS = [
   { label: '1 km', metros: 1000 },
@@ -34,6 +43,19 @@ export default function MapaScreen() {
   const chave = `${coords.latitude},${coords.longitude},${raio}`;
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  useEffect(() => {
+    let ativo = true;
+    buscarCategorias()
+      .then((c) => ativo && setCategorias(c))
+      .catch(() => {}); // sem categorias, os chips de categoria só não aparecem
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Espera a localização resolver (ok, negada ou erro) antes de buscar.
@@ -57,8 +79,9 @@ export default function MapaScreen() {
   }, []);
 
   const carregando = resultado?.chave !== chave;
-  const restaurantes = carregando ? [] : resultado.dados;
+  const restaurantes = carregando ? [] : aplicarFiltros(resultado.dados, filtros);
   const erro = carregando ? null : resultado.erro;
+  const filtrosAtivos = filtros.categoriaId !== null || filtros.faixasPreco.length > 0;
 
   const avisoLocalizacao =
     estadoLocalizacao === 'negado'
@@ -90,7 +113,18 @@ export default function MapaScreen() {
         {RAIOS.map((r) => (
           <Chip key={r.metros} label={r.label} selected={raio === r.metros} onPress={() => setRaio(r.metros)} />
         ))}
+        <Ionicons
+          name={filtrosAtivos ? 'options' : 'options-outline'}
+          size={24}
+          color={theme.primaryDark}
+          accessibilityRole="button"
+          accessibilityLabel={mostrarFiltros ? 'Esconder filtros' : 'Mostrar filtros'}
+          accessibilityState={{ expanded: mostrarFiltros }}
+          style={styles.botaoFiltros}
+          onPress={() => setMostrarFiltros((m) => !m)}
+        />
       </View>
+      {mostrarFiltros ? <BarraFiltros categorias={categorias} filtros={filtros} onChange={setFiltros} /> : null}
       {avisoLocalizacao ? (
         <View style={[styles.aviso, { backgroundColor: theme.backgroundElement }]}>
           <Ionicons name="location-outline" size={18} color={theme.primaryDark} />
@@ -145,8 +179,13 @@ export default function MapaScreen() {
           <View style={styles.centro}>
             <Ionicons name="restaurant-outline" size={48} color={theme.textMuted} />
             <ThemedText themeColor="textSecondary" style={styles.centroTexto}>
-              Nenhum restaurante em {raio / 1000} km. Tente aumentar o raio.
+              {filtrosAtivos
+                ? 'Nenhum restaurante com esses filtros. Tente outra categoria ou preço.'
+                : `Nenhum restaurante em ${raio / 1000} km. Tente aumentar o raio.`}
             </ThemedText>
+            {filtrosAtivos ? (
+              <Button title="Limpar filtros" variant="secondary" onPress={() => setFiltros(FILTROS_VAZIOS)} />
+            ) : null}
           </View>
         }
       />
@@ -185,7 +224,12 @@ const styles = StyleSheet.create({
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: Spacing.two,
+  },
+  botaoFiltros: {
+    marginLeft: 'auto',
+    padding: Spacing.one,
   },
   aviso: {
     flexDirection: 'row',
