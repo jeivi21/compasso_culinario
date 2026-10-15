@@ -65,12 +65,25 @@ favorito (id PK, usuario_id FK, restaurante_id FK, tipo)
 
 Pré-requisitos: Node.js e o app Expo Go no celular (ou um emulador).
 
-```bash
-npm install
-npx expo start
-```
+1. Instale as dependências:
 
-Escaneie o QR code com o Expo Go. A configuração do Supabase (variáveis de ambiente) será documentada aqui quando o backend for integrado.
+   ```bash
+   npm install
+   ```
+
+2. Crie o arquivo `.env` a partir do exemplo e preencha com a **Project URL** e a **publishable key** do seu projeto Supabase (Project Settings › API Keys):
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Inicie o servidor de desenvolvimento e escaneie o QR code com o Expo Go:
+
+   ```bash
+   npx expo start
+   ```
+
+O cliente Supabase fica em `src/lib/supabase.ts`. A chave publicável é pública por natureza; a proteção dos dados é feita por políticas RLS no banco.
 
 ## Organização
 
