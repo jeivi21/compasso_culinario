@@ -156,6 +156,74 @@ export type AvaliacaoComRestaurante = Avaliacao & {
   restaurante: { nome: string; categoria: { nome: string } | null } | null;
 };
 
+export type RestaurantePopular = {
+  id: string;
+  nome: string;
+  categoria: string | null;
+  faixa_preco: number | null;
+  total_avaliacoes: number;
+  media_geral: number | null;
+};
+
+/** Restaurantes com mais avaliações, usados no onboarding (lugares que o usuário provavelmente conhece). */
+export async function buscarRestaurantesPopulares(limite = 12): Promise<RestaurantePopular[]> {
+  const resumo = await supabase
+    .from('restaurante_resumo')
+    .select('restaurante_id, total_avaliacoes, media_geral')
+    .order('total_avaliacoes', { ascending: false })
+    .limit(limite);
+  if (resumo.error) throw resumo.error;
+  const ids = (resumo.data ?? []).map((r) => r.restaurante_id);
+  if (ids.length === 0) return [];
+
+  const restaurantes = await supabase
+    .from('restaurante')
+    .select('id, nome, faixa_preco, categoria(nome)')
+    .in('id', ids);
+  if (restaurantes.error) throw restaurantes.error;
+
+  const porId = new Map(
+    (restaurantes.data ?? []).map((r) => [
+      r.id,
+      r as unknown as { id: string; nome: string; faixa_preco: number | null; categoria: { nome: string } | null },
+    ]),
+  );
+  return (resumo.data ?? []).flatMap((s) => {
+    const r = porId.get(s.restaurante_id);
+    if (!r) return [];
+    return [
+      {
+        id: r.id,
+        nome: r.nome,
+        categoria: r.categoria?.nome ?? null,
+        faixa_preco: r.faixa_preco,
+        total_avaliacoes: s.total_avaliacoes,
+        media_geral: s.media_geral,
+      },
+    ];
+  });
+}
+
+/**
+ * Avaliações rápidas do onboarding: uma nota só, replicada nos quatro critérios.
+ * Usa upsert para o usuário poder refazer o onboarding sem duplicar.
+ */
+export async function salvarAvaliacoesRapidas(usuarioId: string, notas: { restauranteId: string; nota: number }[]) {
+  if (notas.length === 0) return;
+  const { error } = await supabase.from('avaliacao').upsert(
+    notas.map((n) => ({
+      usuario_id: usuarioId,
+      restaurante_id: n.restauranteId,
+      comida: n.nota,
+      atendimento: n.nota,
+      preco: n.nota,
+      ambiente: n.nota,
+    })),
+    { onConflict: 'usuario_id,restaurante_id' },
+  );
+  if (error) throw error;
+}
+
 export function formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }

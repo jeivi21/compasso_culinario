@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
@@ -9,25 +9,11 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { supabase } from '@/lib/supabase';
-
-type Perfil = { nome: string; email: string | null };
 
 export default function PerfilScreen() {
   const theme = useTheme();
-  const { session, signOut } = useAuth();
-  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const { session, perfil, signOut } = useAuth();
   const [saindo, setSaindo] = useState(false);
-
-  useEffect(() => {
-    if (!session) return;
-    supabase
-      .from('usuario')
-      .select('nome, email')
-      .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => setPerfil(data));
-  }, [session]);
 
   async function sair() {
     setSaindo(true);

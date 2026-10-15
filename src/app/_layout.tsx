@@ -41,7 +41,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const scheme = useColorScheme();
-  const { session, isLoading } = useAuth();
+  const { session, perfil, isLoading } = useAuth();
 
   useEffect(() => {
     // Só esconde a splash quando fontes e sessão estão prontas, evitando piscar a tela de login.
@@ -79,7 +79,10 @@ function RootNavigator() {
     <ThemeProvider value={navigationTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!!session}>
+        <Stack.Protected guard={!!session && !!perfil && !perfil.onboarding_concluido}>
+          <Stack.Screen name="onboarding" />
+        </Stack.Protected>
+        <Stack.Protected guard={!!session && (!perfil || perfil.onboarding_concluido)}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="restaurante/[id]/index" options={opcoesComCabecalho} />
           <Stack.Screen name="restaurante/[id]/avaliar" options={opcoesComCabecalho} />
