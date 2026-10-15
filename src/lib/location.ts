@@ -59,7 +59,4 @@ export function useLocalizacao() {
   return { coords, estado, localizar };
 }
 
-export function formatarDistancia(metros: number): string {
-  if (metros < 1000) return `${metros} m`;
-  return `${(metros / 1000).toFixed(1).replace('.', ',')} km`;
-}
+export { formatarDistancia } from '@/lib/formatacao';

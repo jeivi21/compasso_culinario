@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 
+export { formatarData, formatarFaixaPreco, formatarNota } from '@/lib/formatacao';
+export { aplicarFiltros, FILTROS_VAZIOS, filtrosAtivos, type Filtros } from '@/lib/filtros';
+
 /** Linha devolvida pela função SQL `restaurantes_proximos`. */
 export type RestauranteProximo = {
   id: string;
@@ -230,37 +233,4 @@ export async function buscarCategorias(): Promise<Categoria[]> {
   const { data, error } = await supabase.from('categoria').select('id, nome, icone').order('nome');
   if (error) throw error;
   return data ?? [];
-}
-
-export type Filtros = {
-  categoriaId: number | null;
-  /** Faixas de preço aceitas (1–4); vazio = todas. */
-  faixasPreco: number[];
-};
-
-export const FILTROS_VAZIOS: Filtros = { categoriaId: null, faixasPreco: [] };
-
-/** Aplica os filtros de categoria e preço em memória (a busca por raio já veio do banco). */
-export function aplicarFiltros(restaurantes: RestauranteProximo[], filtros: Filtros): RestauranteProximo[] {
-  return restaurantes.filter((r) => {
-    if (filtros.categoriaId !== null && r.categoria_id !== filtros.categoriaId) return false;
-    if (filtros.faixasPreco.length > 0 && (r.faixa_preco === null || !filtros.faixasPreco.includes(r.faixa_preco))) {
-      return false;
-    }
-    return true;
-  });
-}
-
-export function formatarData(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-export function formatarFaixaPreco(faixa: number | null): string {
-  if (!faixa) return '';
-  return '$'.repeat(Math.min(4, Math.max(1, faixa)));
-}
-
-export function formatarNota(nota: number | null): string {
-  if (nota == null) return '–';
-  return Number(nota).toFixed(1).replace('.', ',');
 }

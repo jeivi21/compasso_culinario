@@ -19,6 +19,9 @@ import { AuthProvider, useAuth } from '@/lib/auth-context';
 
 SplashScreen.preventAutoHideAsync();
 
+/** Erros não tratados em qualquer rota caem nesta tela em vez de fechar o app. */
+export { TelaErro as ErrorBoundary } from '@/components/tela-erro';
+
 export default function RootLayout() {
   const [fontsLoaded, fontsError] = useFonts({
     Fredoka_500Medium,
