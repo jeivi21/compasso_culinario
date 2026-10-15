@@ -19,6 +19,7 @@ export default function LoginScreen() {
   const [enviando, setEnviando] = useState(false);
 
   async function entrar() {
+    if (enviando) return; // Enter repetido no teclado não dispara dois logins
     const novosErros = { email: validarEmail(email), senha: validarSenha(senha) };
     setErros(novosErros);
     setErroGeral(null);

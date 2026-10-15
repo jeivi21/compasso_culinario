@@ -209,7 +209,8 @@ export async function buscarRestaurantesPopulares(limite = 12): Promise<Restaura
 
 /**
  * Avaliações rápidas do onboarding: uma nota só, replicada nos quatro critérios.
- * Usa upsert para o usuário poder refazer o onboarding sem duplicar.
+ * `ignoreDuplicates`: se o usuário já tiver uma avaliação completa do lugar,
+ * ela é preservada em vez de ser sobrescrita pela nota rápida.
  */
 export async function salvarAvaliacoesRapidas(usuarioId: string, notas: { restauranteId: string; nota: number }[]) {
   if (notas.length === 0) return;
@@ -222,7 +223,7 @@ export async function salvarAvaliacoesRapidas(usuarioId: string, notas: { restau
       preco: n.nota,
       ambiente: n.nota,
     })),
-    { onConflict: 'usuario_id,restaurante_id' },
+    { onConflict: 'usuario_id,restaurante_id', ignoreDuplicates: true },
   );
   if (error) throw error;
 }

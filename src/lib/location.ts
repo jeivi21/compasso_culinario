@@ -8,6 +8,8 @@ export const LOCALIZACAO_PADRAO: Coordenadas = { latitude: -9.4064, longitude: -
 
 export type EstadoLocalizacao = 'carregando' | 'ok' | 'negado' | 'erro';
 
+const TEMPO_LIMITE_MS = 10_000;
+
 type Leitura = { coords: Coordenadas; estado: Exclude<EstadoLocalizacao, 'carregando'> };
 
 /** Pede permissão e lê a posição. Nunca lança: devolve a localização padrão com o motivo. */
@@ -17,11 +19,15 @@ async function lerPosicao(): Promise<Leitura> {
     if (status !== Location.PermissionStatus.GRANTED) {
       return { coords: LOCALIZACAO_PADRAO, estado: 'negado' };
     }
-    const posicao = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
+    // GPS frio no Android pode demorar; depois de 10 s usa a última posição conhecida.
+    const posicao = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), TEMPO_LIMITE_MS)),
+    ]);
+    const final = posicao ?? (await Location.getLastKnownPositionAsync());
+    if (!final) return { coords: LOCALIZACAO_PADRAO, estado: 'erro' };
     return {
-      coords: { latitude: posicao.coords.latitude, longitude: posicao.coords.longitude },
+      coords: { latitude: final.coords.latitude, longitude: final.coords.longitude },
       estado: 'ok',
     };
   } catch {

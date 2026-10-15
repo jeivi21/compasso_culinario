@@ -21,26 +21,31 @@ const BOTOES: { tipo: TipoFavorito; label: string; ligado: 'heart' | 'bookmark';
 /** Par de botões Favorito / Quero ir da tela de detalhes. */
 export function BotoesMarcacao({ usuarioId, restauranteId, onErro }: BotoesMarcacaoProps) {
   const theme = useTheme();
-  const [marcacoes, setMarcacoes] = useState<Set<TipoFavorito>>(new Set());
+  // `null` enquanto não carregou: os botões ficam desabilitados para não
+  // desmarcar sem querer algo que já estava marcado.
+  const [marcacoes, setMarcacoes] = useState<Set<TipoFavorito> | null>(null);
   const [ocupado, setOcupado] = useState<TipoFavorito | null>(null);
 
   useEffect(() => {
     let ativo = true;
     buscarMarcacoes(usuarioId, restauranteId)
       .then((m) => ativo && setMarcacoes(m))
-      .catch(() => {});
+      .catch(() => ativo && onErro?.('Não foi possível carregar seus favoritos.'));
     return () => {
       ativo = false;
     };
+    // onErro é um setState do pai; estável entre renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarioId, restauranteId]);
 
   async function alternar(tipo: TipoFavorito) {
+    if (!marcacoes) return;
     const marcado = marcacoes.has(tipo);
     setOcupado(tipo);
     try {
       const novo = await alternarMarcacao(usuarioId, restauranteId, tipo, marcado);
       setMarcacoes((m) => {
-        const copia = new Set(m);
+        const copia = new Set(m ?? []);
         if (novo) copia.add(tipo);
         else copia.delete(tipo);
         return copia;
@@ -55,13 +60,13 @@ export function BotoesMarcacao({ usuarioId, restauranteId, onErro }: BotoesMarca
   return (
     <View style={styles.linha}>
       {BOTOES.map((b) => {
-        const marcado = marcacoes.has(b.tipo);
+        const marcado = marcacoes?.has(b.tipo) ?? false;
         return (
           <Pressable
             key={b.tipo}
             accessibilityRole="button"
             accessibilityState={{ selected: marcado, busy: ocupado === b.tipo }}
-            disabled={ocupado !== null}
+            disabled={ocupado !== null || marcacoes === null}
             onPress={() => alternar(b.tipo)}
             style={({ pressed }) => [
               styles.botao,

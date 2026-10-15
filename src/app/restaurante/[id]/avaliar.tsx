@@ -67,6 +67,8 @@ export default function AvaliarScreen() {
   const [notas, setNotas] = useState({ comida: 0, atendimento: 0, preco: 0, ambiente: 0 });
   const [comentario, setComentario] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const [erroCarga, setErroCarga] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
@@ -83,11 +85,12 @@ export default function AvaliarScreen() {
           setComentario(a.comentario ?? '');
         }
       })
-      .catch(() => ativo && setExistente(null));
+      // Se a busca falhar, não abrimos como "nova": poderia duplicar uma avaliação já existente.
+      .catch(() => ativo && setErroCarga('Não foi possível carregar sua avaliação. Verifique sua conexão.'));
     return () => {
       ativo = false;
     };
-  }, [usuarioId, restauranteId]);
+  }, [usuarioId, restauranteId, tentativa]);
 
   const faltando = CRITERIOS.filter((c) => notas[c.chave] === 0).map((c) => c.label);
   const notaGeral = (notas.comida + notas.atendimento + notas.preco + notas.ambiente) / 4;
@@ -132,7 +135,21 @@ export default function AvaliarScreen() {
   return (
     <Screen edges={['left', 'right', 'bottom']} style={styles.screen}>
       <Stack.Screen options={{ title: existente ? 'Editar avaliação' : 'Nova avaliação' }} />
-      {existente === undefined ? (
+      {erroCarga ? (
+        <View style={styles.centro}>
+          <ThemedText themeColor="textSecondary" style={styles.erro}>
+            {erroCarga}
+          </ThemedText>
+          <Button
+            title="Tentar de novo"
+            variant="secondary"
+            onPress={() => {
+              setErroCarga(null);
+              setTentativa((t) => t + 1);
+            }}
+          />
+        </View>
+      ) : existente === undefined ? (
         <View style={styles.centro}>
           <ActivityIndicator color={theme.primary} size="large" />
         </View>
@@ -266,5 +283,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
   },
 });

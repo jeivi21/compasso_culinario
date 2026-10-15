@@ -33,7 +33,11 @@ export default function RestauranteScreen() {
     useCallback(() => {
       let ativo = true;
       buscarDetalhesRestaurante(id)
-        .then((d) => ativo && setDetalhes(d))
+        .then((d) => {
+          if (!ativo) return;
+          setDetalhes(d);
+          setErro(null);
+        })
         .catch(() => ativo && setErro('Não foi possível carregar o restaurante.'));
       return () => {
         ativo = false;
@@ -59,7 +63,7 @@ export default function RestauranteScreen() {
         <View style={styles.centro}>
           <ActivityIndicator color={theme.primary} size="large" />
         </View>
-      ) : erro ? (
+      ) : erro && !detalhes ? (
         <View style={styles.centro}>
           <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
           <ThemedText themeColor="textSecondary">{erro}</ThemedText>
@@ -101,7 +105,7 @@ export default function RestauranteScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   {detalhes.resumo.total_avaliacoes === 0
                     ? 'Ainda sem avaliações'
-                    : `${detalhes.resumo.total_avaliacoes} avaliação${detalhes.resumo.total_avaliacoes > 1 ? 'ões' : ''}`}
+                    : `${detalhes.resumo.total_avaliacoes} ${detalhes.resumo.total_avaliacoes > 1 ? 'avaliações' : 'avaliação'}`}
                 </ThemedText>
               </View>
             </View>

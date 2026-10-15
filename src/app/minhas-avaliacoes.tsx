@@ -17,6 +17,7 @@ export default function MinhasAvaliacoesScreen() {
   const { session } = useAuth();
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoComRestaurante[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
   // Recarrega ao voltar da tela de edição/exclusão.
   useFocusEffect(
@@ -24,12 +25,18 @@ export default function MinhasAvaliacoesScreen() {
       if (!session) return;
       let ativo = true;
       buscarMinhasAvaliacoes(session.user.id)
-        .then((a) => ativo && setAvaliacoes(a))
+        .then((a) => {
+          if (!ativo) return;
+          setAvaliacoes(a);
+          setErro(null);
+        })
         .catch(() => ativo && setErro('Não foi possível carregar suas avaliações.'));
       return () => {
         ativo = false;
       };
-    }, [session]),
+      // `tentativa` força nova busca no "Tentar de novo".
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session, tentativa]),
   );
 
   return (
@@ -39,10 +46,11 @@ export default function MinhasAvaliacoesScreen() {
         <View style={styles.centro}>
           <ActivityIndicator color={theme.primary} size="large" />
         </View>
-      ) : erro ? (
+      ) : erro && !avaliacoes ? (
         <View style={styles.centro}>
           <ThemedText themeColor="textSecondary">{erro}</ThemedText>
-          <Button title="Voltar" variant="secondary" onPress={() => router.back()} />
+          <Button title="Tentar de novo" variant="secondary" onPress={() => setTentativa((t) => t + 1)} />
+          <Button title="Voltar" variant="ghost" onPress={() => router.back()} />
         </View>
       ) : (
         <FlatList

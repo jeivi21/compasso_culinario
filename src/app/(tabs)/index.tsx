@@ -58,6 +58,11 @@ export default function ParaVoceScreen() {
   const cabecalho = (
     <View style={styles.cabecalho}>
       <ThemedText type="title">Para você</ThemedText>
+      {erro && resultado ? (
+        <ThemedText type="small" themeColor="danger">
+          {erro} Mostrando a última lista carregada.
+        </ThemedText>
+      ) : null}
       {resultado?.modo === 'ubcf' ? (
         <ThemedText themeColor="textSecondary">
           Previsões feitas a partir de usuários com gosto parecido com o seu.

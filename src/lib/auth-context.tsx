@@ -32,13 +32,21 @@ export function useAuth() {
   return value;
 }
 
+/**
+ * Perfil do usuário. Se a consulta falhar (sem rede), devolve `null`: o app segue
+ * para as abas sem bloquear o uso; o onboarding só é exigido quando o perfil carrega.
+ */
 async function carregarPerfil(usuarioId: string): Promise<Perfil | null> {
-  const { data } = await supabase
-    .from('usuario')
-    .select('id, nome, email, onboarding_concluido')
-    .eq('id', usuarioId)
-    .maybeSingle();
-  return data;
+  try {
+    const { data } = await supabase
+      .from('usuario')
+      .select('id, nome, email, onboarding_concluido')
+      .eq('id', usuarioId)
+      .maybeSingle();
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -48,28 +56,33 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     // Restaura a sessão persistida e passa a ouvir login/logout/refresh.
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      setPerfil(data.session ? await carregarPerfil(data.session.user.id) : null);
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
+      .catch(() => setSession(null))
+      .finally(() => setIsLoading(false));
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
-      if (!nextSession) {
-        setPerfil(null);
-        return;
-      }
-      // Só recarrega o perfil quando o usuário muda (evita buscar a cada refresh de token).
-      setPerfil((atual) => {
-        if (atual?.id === nextSession.user.id) return atual;
-        carregarPerfil(nextSession.user.id).then(setPerfil);
-        return atual;
-      });
     });
 
     return () => subscription.subscription.unsubscribe();
   }, []);
+
+  // Carrega o perfil quando o usuário muda (não a cada refresh de token).
+  // A flag `ativo` descarta respostas de um usuário anterior em login/logout rápidos.
+  const usuarioId = session?.user.id ?? null;
+  useEffect(() => {
+    if (!usuarioId) return;
+    let ativo = true;
+    carregarPerfil(usuarioId).then((p) => ativo && setPerfil(p));
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioId]);
+
+  // Sem sessão não há perfil; derivado, sem setState em efeito.
+  const perfilAtual = usuarioId && perfil?.id === usuarioId ? perfil : null;
 
   const concluirOnboarding = useCallback(async () => {
     if (!session) return;
@@ -85,7 +98,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     <AuthContext.Provider
       value={{
         session,
-        perfil,
+        perfil: perfilAtual,
         isLoading,
         signOut: async () => {
           await supabase.auth.signOut();

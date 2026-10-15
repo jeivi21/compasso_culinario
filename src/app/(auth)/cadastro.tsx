@@ -29,6 +29,7 @@ export default function CadastroScreen() {
   const [enviando, setEnviando] = useState(false);
 
   async function cadastrar() {
+    if (enviando) return; // evita dois signUp com Enter repetido
     const novosErros: Erros = {
       nome: validarNome(nome),
       email: validarEmail(email),
