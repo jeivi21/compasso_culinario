@@ -26,6 +26,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O CompassoCulinário usa sua localização para encontrar restaurantes perto de você."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#2EC4B6",
