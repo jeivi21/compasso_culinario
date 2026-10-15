@@ -104,6 +104,58 @@ export async function buscarDetalhesRestaurante(id: string): Promise<DetalhesRes
   };
 }
 
+export type NotasAvaliacao = {
+  comida: number;
+  atendimento: number;
+  preco: number;
+  ambiente: number;
+  comentario: string | null;
+};
+
+/** Avaliação do usuário logado para um restaurante, ou `null` se ainda não avaliou. */
+export async function buscarMinhaAvaliacao(usuarioId: string, restauranteId: string): Promise<Avaliacao | null> {
+  const { data, error } = await supabase
+    .from('avaliacao')
+    .select('*, usuario(nome)')
+    .eq('usuario_id', usuarioId)
+    .eq('restaurante_id', restauranteId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as unknown as Avaliacao | null;
+}
+
+export async function criarAvaliacao(usuarioId: string, restauranteId: string, notas: NotasAvaliacao) {
+  const { error } = await supabase
+    .from('avaliacao')
+    .insert({ usuario_id: usuarioId, restaurante_id: restauranteId, ...notas });
+  if (error) throw error;
+}
+
+export async function atualizarAvaliacao(id: string, notas: NotasAvaliacao) {
+  const { error } = await supabase.from('avaliacao').update(notas).eq('id', id);
+  if (error) throw error;
+}
+
+export async function excluirAvaliacao(id: string) {
+  const { error } = await supabase.from('avaliacao').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Todas as avaliações do usuário, com o nome do restaurante, mais recentes primeiro. */
+export async function buscarMinhasAvaliacoes(usuarioId: string): Promise<AvaliacaoComRestaurante[]> {
+  const { data, error } = await supabase
+    .from('avaliacao')
+    .select('*, usuario(nome), restaurante(nome, categoria(nome))')
+    .eq('usuario_id', usuarioId)
+    .order('criado_em', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as AvaliacaoComRestaurante[];
+}
+
+export type AvaliacaoComRestaurante = Avaliacao & {
+  restaurante: { nome: string; categoria: { nome: string } | null } | null;
+};
+
 export function formatarData(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 }

@@ -68,20 +68,22 @@ function RootNavigator() {
     },
   };
 
+  const opcoesComCabecalho = {
+    headerShown: true,
+    headerTitleStyle: { fontFamily: Fonts.display, fontSize: 18 },
+    headerTintColor: colors.primaryDark,
+    headerBackTitle: 'Voltar',
+  };
+
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={!!session}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="restaurante/[id]"
-            options={{
-              headerShown: true,
-              headerTitleStyle: { fontFamily: Fonts.display, fontSize: 18 },
-              headerTintColor: colors.primaryDark,
-            }}
-          />
+          <Stack.Screen name="restaurante/[id]/index" options={opcoesComCabecalho} />
+          <Stack.Screen name="restaurante/[id]/avaliar" options={opcoesComCabecalho} />
+          <Stack.Screen name="minhas-avaliacoes" options={opcoesComCabecalho} />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)" />

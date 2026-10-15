@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
@@ -46,6 +47,21 @@ export default function PerfilScreen() {
         <ThemedText type="subtitle">{perfil?.nome ?? '…'}</ThemedText>
         <ThemedText themeColor="textSecondary">{perfil?.email ?? session?.user.email}</ThemedText>
       </View>
+      <View style={styles.menu}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/minhas-avaliacoes')}
+          style={({ pressed }) => [
+            styles.menuItem,
+            { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? 0.85 : 1 },
+          ]}>
+          <Ionicons name="star-outline" size={22} color={theme.primaryDark} />
+          <ThemedText type="bold" style={styles.menuTexto}>
+            Minhas avaliações
+          </ThemedText>
+          <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+        </Pressable>
+      </View>
       <View style={styles.spacer} />
       <Button title="Sair" variant="secondary" onPress={sair} loading={saindo} />
     </Screen>
@@ -70,6 +86,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.two,
+  },
+  menu: {
+    paddingTop: Spacing.four,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Radius.medium,
+    borderWidth: 1,
+  },
+  menuTexto: {
+    flex: 1,
   },
   spacer: {
     flex: 1,
