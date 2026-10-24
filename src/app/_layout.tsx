@@ -90,6 +90,9 @@ function RootNavigator() {
           <Stack.Screen name="restaurante/[id]/index" options={opcoesComCabecalho} />
           <Stack.Screen name="restaurante/[id]/avaliar" options={opcoesComCabecalho} />
           <Stack.Screen name="minhas-avaliacoes" options={opcoesComCabecalho} />
+          <Stack.Screen name="duelo/index" options={opcoesComCabecalho} />
+          <Stack.Screen name="duelo/novo" options={opcoesComCabecalho} />
+          <Stack.Screen name="duelo/[id]" options={opcoesComCabecalho} />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)" />

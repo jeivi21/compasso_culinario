@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
@@ -111,7 +111,18 @@ export default function AmigosScreen() {
 
   const cabecalho = (
     <View style={styles.cabecalho}>
-      <ThemedText type="title">Amigos</ThemedText>
+      <View style={styles.titulo}>
+        <ThemedText type="title">Amigos</ThemedText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/duelo')}
+          style={({ pressed }) => [styles.botaoDuelos, { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 }]}>
+          <Ionicons name="flash" size={18} color={theme.onPrimary} />
+          <ThemedText type="bold" style={{ color: theme.onPrimary }}>
+            Duelos
+          </ThemedText>
+        </Pressable>
+      </View>
       <View style={[styles.busca, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
         <Ionicons name="search" size={20} color={theme.textMuted} />
         <TextInput
@@ -311,6 +322,14 @@ export default function AmigosScreen() {
               </View>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={`Desafiar ${item.outro.nome}`}
+                hitSlop={8}
+                onPress={() => router.push({ pathname: '/duelo/novo', params: { amigoId: item.outro.id } })}
+                style={[styles.icone, { backgroundColor: theme.backgroundElement }]}>
+                <Ionicons name="flash" size={20} color={theme.primaryDark} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
                 accessibilityLabel={`Desfazer amizade com ${item.outro.nome}`}
                 hitSlop={8}
                 disabled={ocupado !== null}
@@ -333,6 +352,19 @@ const styles = StyleSheet.create({
   },
   tituloCarregando: {
     paddingTop: Spacing.three,
+  },
+  titulo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  botaoDuelos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.pill,
   },
   busca: {
     flexDirection: 'row',
