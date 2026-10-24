@@ -21,7 +21,7 @@ export type MapaRestaurantesProps = {
 type Mensagem = { tipo: 'pronto' } | { tipo: 'selecionar'; id: string } | { tipo: 'limpar' };
 
 /**
- * Mapa em WebView (Leaflet + tiles CARTO/OpenStreetMap): não depende de chave do
+ * Mapa em WebView (Leaflet + tiles do OpenStreetMap): não depende de chave do
  * Google Maps, então funciona no Expo Go. Um pino arredondado por restaurante com a
  * nota; tocar destaca e abre um card que leva aos detalhes.
  * A versão web está em mapa-restaurantes.web.tsx.
