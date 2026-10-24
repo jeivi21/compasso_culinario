@@ -1,4 +1,5 @@
 import { Anagrama } from '@/games/anagrama';
+import { Cabo } from '@/games/cabo';
 import { Fatia } from '@/games/fatia';
 import { Garcom } from '@/games/garcom';
 import { Intruso } from '@/games/intruso';
@@ -48,6 +49,15 @@ export const JOGOS: Record<string, InfoJogo> = {
     pontuacao: '10 pontos por nível completado, até 10 níveis.',
     icone: 'color-palette-outline',
     Componente: Memoria,
+  },
+  cabo: {
+    id: 'cabo',
+    nome: 'Cabo de guerra',
+    descricao: 'Ao vivo: os dois tocam a tela por 10 segundos; cada toque puxa a corda para o seu lado.',
+    pontuacao: 'Um ponto por toque. Os dois precisam estar na tela ao mesmo tempo.',
+    icone: 'people-outline',
+    sincrono: true,
+    Componente: Cabo,
   },
   anagrama: {
     id: 'anagrama',

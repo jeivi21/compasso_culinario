@@ -43,8 +43,12 @@ export default function DueloScreen() {
   const [ocupado, setOcupado] = useState(false);
   const [escolha, setEscolha] = useState<RestauranteProximo | null>(null);
   const [jogando, setJogando] = useState(false);
-  const [placarLocal, setPlacarLocal] = useState<number | null>(null);
+  // Placar que acabei de fazer, guardado com a rodada: em empate o banco re-sorteia
+  // e zera os placares, então um placar de rodada antiga não vale mais.
+  const [placarRodada, setPlacarRodada] = useState<{ rodada: number; placar: number } | null>(null);
   const [tentativa, setTentativa] = useState(0);
+
+  const rodada = duelo?.rodada ?? 1;
 
   const recarregar = useCallback(() => {
     buscarDuelo(id)
@@ -83,13 +87,13 @@ export default function DueloScreen() {
 
   const aoTerminarJogo = useCallback(
     (placar: number) => {
-      setPlacarLocal(placar);
+      setPlacarRodada({ rodada, placar });
       setJogando(false);
       registrarPlacar(id, placar)
         .then(recarregar)
         .catch((e) => setAcaoErro(traduzirErroDuelo(e instanceof Error ? e.message : '')));
     },
-    [id, recarregar],
+    [id, recarregar, rodada],
   );
 
   if (!duelo) {
@@ -115,6 +119,7 @@ export default function DueloScreen() {
   const jogo = infoJogo(duelo.jogo);
   const meuRestaurante = lado === 'desafiante' ? duelo.restaurante_desafiante : duelo.restaurante_desafiado;
   const restauranteOutro = lado === 'desafiante' ? duelo.restaurante_desafiado : duelo.restaurante_desafiante;
+  const placarLocal = placarRodada?.rodada === duelo.rodada ? placarRodada.placar : null;
   const meu = meuPlacar(duelo, meuId);
   const dele = placarAdversario(duelo, meuId);
 
@@ -124,7 +129,12 @@ export default function DueloScreen() {
       <Screen edges={['left', 'right', 'bottom']}>
         <Stack.Screen options={{ title: jogo.nome, headerBackVisible: false, gestureEnabled: false }} />
         <View style={styles.jogo}>
-          <jogo.Componente key={`${duelo.id}-${duelo.rodada}`} semente={duelo.semente} onFim={aoTerminarJogo} />
+          <jogo.Componente
+            key={`${duelo.id}-${duelo.rodada}`}
+            semente={duelo.semente}
+            onFim={aoTerminarJogo}
+            contexto={{ dueloId: duelo.id, lado, nomeAdversario: outro?.nome ?? 'Adversário' }}
+          />
         </View>
       </Screen>
     );
@@ -217,6 +227,11 @@ export default function DueloScreen() {
           <ThemedText type="small" themeColor="textMuted" style={styles.centroTexto}>
             {jogo.pontuacao}
           </ThemedText>
+          {jogo.sincrono ? (
+            <ThemedText type="small" themeColor="primaryDark" style={styles.centroTexto}>
+              Combine com {outro?.nome.split(' ')[0]} de abrir o duelo ao mesmo tempo.
+            </ThemedText>
+          ) : null}
         </View>
         {jaJoguei ? (
           <>
