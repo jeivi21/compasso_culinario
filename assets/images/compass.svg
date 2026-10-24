@@ -1,23 +1,27 @@
 <svg viewBox="0 0 560 560" width="560" height="560" xmlns="http://www.w3.org/2000/svg">
 <circle cx="280" cy="280" r="272" fill="#2EC4B6"/>
-<circle cx="280" cy="280" r="222" fill="#F3FBF9"/>
-<circle cx="280" cy="280" r="196" fill="none" stroke="#A8D5CE" stroke-width="4" stroke-dasharray="6 14"/>
-<g fill="#0E2E2B">
-<rect x="274" y="62" width="12" height="34" rx="6"/>
-<rect x="274" y="464" width="12" height="34" rx="6"/>
-<rect x="62" y="274" width="34" height="12" rx="6"/>
-<rect x="464" y="274" width="34" height="12" rx="6"/>
+<!-- prato (arco riscado pelo compasso) -->
+<path d="M150 442 A 330 330 0 0 0 410 442" fill="none" stroke="#F3FBF9" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 30"/>
+<ellipse cx="280" cy="462" rx="150" ry="26" fill="#F3FBF9"/>
+<ellipse cx="280" cy="458" rx="112" ry="16" fill="#CDE9E4"/>
+<!-- perna esquerda: garfo -->
+<g transform="rotate(-19 280 112)">
+<rect x="267" y="130" width="26" height="250" rx="13" fill="#0E2E2B"/>
+<path d="M258 372 H302 V392 Q302 416 280 420 Q258 416 258 392 Z" fill="#0E2E2B"/>
+<rect x="258" y="396" width="8" height="52" rx="4" fill="#0E2E2B"/>
+<rect x="270" y="396" width="8" height="56" rx="4" fill="#0E2E2B"/>
+<rect x="282" y="396" width="8" height="56" rx="4" fill="#0E2E2B"/>
+<rect x="294" y="396" width="8" height="52" rx="4" fill="#0E2E2B"/>
 </g>
-<polygon points="280,110 304,256 450,280 304,304 280,450 256,304 110,280 256,256" fill="#CDE9E4"/>
-<polygon points="280,170 292,268 390,280 292,292 280,390 268,292 170,280 268,268" fill="#A8D5CE"/>
-<g transform="rotate(35 280 280)">
-<rect x="250" y="64" width="9" height="58" rx="4.5" fill="#0E2E2B"/>
-<rect x="266" y="64" width="9" height="58" rx="4.5" fill="#0E2E2B"/>
-<rect x="282" y="64" width="9" height="58" rx="4.5" fill="#0E2E2B"/>
-<rect x="298" y="64" width="9" height="58" rx="4.5" fill="#0E2E2B"/>
-<path d="M250 112 H307 V128 Q307 150 286 156 H274 Q250 150 250 128 Z" fill="#0E2E2B"/>
-<rect x="272" y="150" width="16" height="132" rx="8" fill="#0E2E2B"/>
-<path d="M271 282 V438 Q271 486 300 496 V282 Z" fill="#0B7A70"/>
-<circle cx="280" cy="280" r="20" fill="#2EC4B6" stroke="#0E2E2B" stroke-width="7"/>
+<!-- perna direita: faca -->
+<g transform="rotate(19 280 112)">
+<rect x="267" y="130" width="26" height="180" rx="13" fill="#0E2E2B"/>
+<path d="M266 304 H296 Q312 360 302 420 L280 452 Q262 400 266 304 Z" fill="#0B7A70"/>
+<path d="M281 310 L283 430 L280 448 L276 430 Z" fill="#F3FBF9" opacity="0.5"/>
 </g>
+<!-- articulação e cabo do compasso -->
+<rect x="266" y="36" width="28" height="60" rx="14" fill="#0E2E2B"/>
+<circle cx="280" cy="112" r="40" fill="#0E2E2B"/>
+<circle cx="280" cy="112" r="16" fill="#2EC4B6"/>
+<circle cx="280" cy="112" r="6" fill="#0E2E2B"/>
 </svg>

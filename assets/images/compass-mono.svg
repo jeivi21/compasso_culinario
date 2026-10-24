@@ -1,14 +1,18 @@
 <svg viewBox="0 0 560 560" width="560" height="560" xmlns="http://www.w3.org/2000/svg">
-<circle cx="280" cy="280" r="272" fill="none" stroke="#000" stroke-width="40"/>
-<polygon points="280,110 304,256 450,280 304,304 280,450 256,304 110,280 256,256" fill="#000" opacity="0.35"/>
-<g transform="rotate(35 280 280)" fill="#000">
-<rect x="250" y="64" width="9" height="58" rx="4.5"/>
-<rect x="266" y="64" width="9" height="58" rx="4.5"/>
-<rect x="282" y="64" width="9" height="58" rx="4.5"/>
-<rect x="298" y="64" width="9" height="58" rx="4.5"/>
-<path d="M250 112 H307 V128 Q307 150 286 156 H274 Q250 150 250 128 Z"/>
-<rect x="272" y="150" width="16" height="132" rx="8"/>
-<path d="M271 282 V438 Q271 486 300 496 V282 Z"/>
-<circle cx="280" cy="280" r="24"/>
+<path d="M150 442 A 330 330 0 0 0 410 442" fill="none" stroke="#000" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 30" opacity="0.5"/>
+<ellipse cx="280" cy="462" rx="150" ry="26" fill="#000" opacity="0.5"/>
+<g transform="rotate(-19 280 112)" fill="#000">
+<rect x="267" y="130" width="26" height="250" rx="13"/>
+<path d="M258 372 H302 V392 Q302 416 280 420 Q258 416 258 392 Z"/>
+<rect x="258" y="396" width="8" height="52" rx="4"/>
+<rect x="270" y="396" width="8" height="56" rx="4"/>
+<rect x="282" y="396" width="8" height="56" rx="4"/>
+<rect x="294" y="396" width="8" height="52" rx="4"/>
 </g>
+<g transform="rotate(19 280 112)" fill="#000">
+<rect x="267" y="130" width="26" height="180" rx="13"/>
+<path d="M266 304 H296 Q312 360 302 420 L280 452 Q262 400 266 304 Z"/>
+</g>
+<rect x="266" y="36" width="28" height="60" rx="14" fill="#000"/>
+<circle cx="280" cy="112" r="40" fill="#000"/>
 </svg>

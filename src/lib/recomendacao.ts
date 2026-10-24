@@ -1,6 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { buscarRestaurantesProximos, type RestauranteProximo } from '@/lib/restaurantes';
-import { mediaBayesiana, montarMatriz, preverNotas, scoreFinal, type AvaliacaoUBCF } from '@/lib/ubcf';
+import {
+  encontrarVizinhos,
+  mediaBayesiana,
+  montarMatriz,
+  preverNotas,
+  scoreFinal,
+  type AvaliacaoUBCF,
+} from '@/lib/ubcf';
 
 export type Recomendacao = {
   restaurante: RestauranteProximo;
@@ -18,6 +25,28 @@ export type ResultadoRecomendacao = {
   modo: 'ubcf' | 'popular';
   totalAvaliacoesDoUsuario: number;
 };
+
+export type VizinhoPerfil = { id: string; nome: string; similaridade: number; itensEmComum: number };
+
+/** Usuários com gosto mais parecido (para o Perfil). Vazio se o usuário avaliou pouco. */
+export async function vizinhosDoUsuario(usuarioId: string, limite = 5): Promise<VizinhoPerfil[]> {
+  const [avaliacoesRes, usuariosRes] = await Promise.all([
+    supabase.from('avaliacao').select('usuario_id, restaurante_id, nota_geral'),
+    supabase.from('usuario').select('id, nome'),
+  ]);
+  if (avaliacoesRes.error) throw avaliacoesRes.error;
+  if (usuariosRes.error) throw usuariosRes.error;
+  const matriz = montarMatriz(
+    (avaliacoesRes.data ?? []).map((a) => ({ usuarioId: a.usuario_id, itemId: a.restaurante_id, nota: Number(a.nota_geral) })),
+  );
+  const nomes = new Map((usuariosRes.data ?? []).map((u) => [u.id, u.nome]));
+  return encontrarVizinhos(matriz, usuarioId, { k: limite }).map((v) => ({
+    id: v.usuarioId,
+    nome: nomes.get(v.usuarioId) ?? 'Usuário',
+    similaridade: v.similaridade,
+    itensEmComum: v.itensEmComum,
+  }));
+}
 
 /** Abaixo disso o usuário é tratado como novo e recebe o ranking por popularidade. */
 const MIN_AVALIACOES_PARA_UBCF = 3;

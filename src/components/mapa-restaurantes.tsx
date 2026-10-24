@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 
 import { ThemedText } from '@/components/themed-text';
 import { MAP_STYLE_CLARO, MAP_STYLE_ESCURO } from '@/constants/map-style';
@@ -18,6 +18,9 @@ export type MapaRestaurantesProps = {
   onSelecionar?: (restaurante: RestauranteProximo) => void;
 };
 
+/** Se o mapa não avisar que carregou até aqui, mostramos uma dica em vez de uma tela preta. */
+const TEMPO_LIMITE_CARGA_MS = 8_000;
+
 /**
  * Mapa nativo estilizado na paleta do app, com um pino arredondado por restaurante
  * mostrando a nota. Tocar num pino destaca-o e abre um card resumido; o card leva
@@ -28,7 +31,15 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
   const escuro = useColorScheme() === 'dark';
   const mapa = useRef<MapView>(null);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+  const [carregou, setCarregou] = useState(false);
+  const [demorou, setDemorou] = useState(false);
   const selecionado = restaurantes.find((r) => r.id === selecionadoId) ?? null;
+
+  useEffect(() => {
+    if (carregou) return;
+    const id = setTimeout(() => setDemorou(true), TEMPO_LIMITE_CARGA_MS);
+    return () => clearTimeout(id);
+  }, [carregou]);
 
   // 1 grau de latitude ≈ 111 km; o delta cobre o diâmetro do raio com folga.
   const delta = (raioMetros * 2.4) / 111_000;
@@ -45,8 +56,9 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
     <View style={styles.container}>
       <MapView
         ref={mapa}
-        provider={PROVIDER_GOOGLE}
         style={styles.mapa}
+        // O renderizador novo do Google Maps deixa o mapa preto em alguns Androids; o legado é estável.
+        googleRenderer="LEGACY"
         customMapStyle={escuro ? MAP_STYLE_ESCURO : MAP_STYLE_CLARO}
         initialRegion={{
           latitude: centro.latitude,
@@ -58,6 +70,11 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
         showsMyLocationButton={false}
         showsCompass={false}
         toolbarEnabled={false}
+        loadingEnabled
+        loadingIndicatorColor={theme.primary}
+        loadingBackgroundColor={theme.background}
+        onMapLoaded={() => setCarregou(true)}
+        onMapReady={() => setCarregou(true)}
         onPress={() => setSelecionadoId(null)}>
         {restaurantes.map((r) => {
           const ativo = r.id === selecionadoId;
@@ -88,17 +105,23 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
                     {formatarNota(r.media_geral)}
                   </ThemedText>
                 </View>
-                <View
-                  style={[
-                    styles.pinoPonta,
-                    { borderTopColor: ativo ? theme.primaryDark : theme.primary },
-                  ]}
-                />
+                <View style={[styles.pinoPonta, { borderTopColor: ativo ? theme.primaryDark : theme.primary }]} />
               </View>
             </Marker>
           );
         })}
       </MapView>
+
+      {!carregou ? (
+        <View style={[styles.carregando, { backgroundColor: theme.background }]} pointerEvents="none">
+          <ActivityIndicator color={theme.primary} size="large" />
+          <ThemedText themeColor="textSecondary" style={styles.carregandoTexto}>
+            {demorou
+              ? 'O mapa está demorando. Verifique a conexão ou use a lista; no Expo Go o mapa funciona só no Android.'
+              : 'Carregando mapa…'}
+          </ThemedText>
+        </View>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"
@@ -133,7 +156,7 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
             <ThemedText type="small" themeColor="textMuted">
               {selecionado.total_avaliacoes === 0
                 ? 'Sem avaliações'
-                : `★ ${formatarNota(selecionado.media_geral)} · ${selecionado.total_avaliacoes} avaliaç${selecionado.total_avaliacoes > 1 ? 'ões' : 'ão'}`}
+                : `★ ${formatarNota(selecionado.media_geral)} · ${selecionado.total_avaliacoes} ${selecionado.total_avaliacoes > 1 ? 'avaliações' : 'avaliação'}`}
             </ThemedText>
           </View>
           <View style={[styles.cardSeta, { backgroundColor: theme.primary }]}>
@@ -148,11 +171,25 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    borderRadius: Radius.medium,
-    overflow: 'hidden',
+    // No Android, recortar o MapView (overflow hidden + borderRadius) pode deixá-lo preto.
+    ...(Platform.OS === 'ios' ? { borderRadius: Radius.medium, overflow: 'hidden' as const } : null),
   },
   mapa: {
     flex: 1,
+  },
+  carregando: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
+  },
+  carregandoTexto: {
+    textAlign: 'center',
   },
   pino: {
     alignItems: 'center',

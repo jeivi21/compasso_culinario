@@ -20,6 +20,8 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   /** Marca o onboarding como concluído no banco e no estado local. */
   concluirOnboarding: () => Promise<void>;
+  /** Recarrega o perfil do banco (depois de editar o nome, por exemplo). */
+  recarregarPerfil: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -81,6 +83,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, [usuarioId]);
 
+  const recarregarPerfil = useCallback(async () => {
+    if (!usuarioId) return;
+    setPerfil(await carregarPerfil(usuarioId));
+  }, [usuarioId]);
+
   // Sem sessão não há perfil; derivado, sem setState em efeito.
   const perfilAtual = usuarioId && perfil?.id === usuarioId ? perfil : null;
 
@@ -104,6 +111,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           await supabase.auth.signOut();
         },
         concluirOnboarding,
+        recarregarPerfil,
       }}>
       {children}
     </AuthContext.Provider>
