@@ -1,10 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 
 import { ThemedText } from '@/components/themed-text';
-import { MAP_STYLE_CLARO, MAP_STYLE_ESCURO } from '@/constants/map-style';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,6 +19,16 @@ export type MapaRestaurantesProps = {
 
 /** Se o mapa não avisar que carregou até aqui, mostramos uma dica em vez de uma tela preta. */
 const TEMPO_LIMITE_CARGA_MS = 8_000;
+
+/**
+ * Tiles do CARTO (dados OpenStreetMap), gratuitos e sem chave de API. O mapa base do
+ * Google fica desligado (mapType none): no Expo Go não há chave do Google Maps e os
+ * tiles dele vêm pretos. Os estilos "light/dark" do CARTO combinam com a paleta do app.
+ */
+const TILES_CLARO = 'https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png';
+const TILES_CLARO_ROTULOS = 'https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png';
+const TILES_ESCURO = 'https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png';
+const TILES_ESCURO_ROTULOS = 'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png';
 
 /**
  * Mapa nativo estilizado na paleta do app, com um pino arredondado por restaurante
@@ -59,7 +68,7 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
         style={styles.mapa}
         // O renderizador novo do Google Maps deixa o mapa preto em alguns Androids; o legado é estável.
         googleRenderer="LEGACY"
-        customMapStyle={escuro ? MAP_STYLE_ESCURO : MAP_STYLE_CLARO}
+        mapType="none"
         initialRegion={{
           latitude: centro.latitude,
           longitude: centro.longitude,
@@ -76,6 +85,8 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
         onMapLoaded={() => setCarregou(true)}
         onMapReady={() => setCarregou(true)}
         onPress={() => setSelecionadoId(null)}>
+        <UrlTile urlTemplate={escuro ? TILES_ESCURO : TILES_CLARO} maximumZ={19} tileSize={256} zIndex={-2} />
+        <UrlTile urlTemplate={escuro ? TILES_ESCURO_ROTULOS : TILES_CLARO_ROTULOS} maximumZ={19} tileSize={256} zIndex={-1} />
         {restaurantes.map((r) => {
           const ativo = r.id === selecionadoId;
           return (
@@ -135,6 +146,8 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
         style={[styles.botaoCentro, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
         <Ionicons name="locate" size={22} color={theme.primaryDark} />
       </Pressable>
+
+      <ThemedText style={[styles.atribuicao, { color: escuro ? '#CDE9E4' : '#3F5F5B' }]}>© OpenStreetMap · © CARTO</ThemedText>
 
       {selecionado ? (
         <Pressable
@@ -228,6 +241,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  atribuicao: {
+    position: 'absolute',
+    right: Spacing.two,
+    bottom: Spacing.one,
+    fontSize: 10,
+    lineHeight: 12,
   },
   card: {
     position: 'absolute',
