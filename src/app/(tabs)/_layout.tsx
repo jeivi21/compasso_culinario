@@ -42,8 +42,12 @@ export default function TabLayout() {
         options={{ title: 'Mapa', tabBarIcon: tabIcon('map', 'map-outline') }}
       />
       <Tabs.Screen
+        name="amigos"
+        options={{ title: 'Amigos', tabBarIcon: tabIcon('people', 'people-outline') }}
+      />
+      <Tabs.Screen
         name="favoritos"
-        options={{ title: 'Favoritos', tabBarIcon: tabIcon('heart', 'heart-outline') }}
+        options={{ title: 'Salvos', tabBarIcon: tabIcon('heart', 'heart-outline') }}
       />
       <Tabs.Screen
         name="perfil"
