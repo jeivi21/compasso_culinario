@@ -30,7 +30,7 @@ Validações: e-mail, senha (mínimo 6), confirmação de senha, nome, as quatro
 |---|---|
 | App | React Native 0.86 + Expo SDK 57, TypeScript, Expo Router (rotas protegidas por sessão) |
 | Backend | Supabase: Auth (e-mail/senha), PostgreSQL 17 + PostGIS, Row Level Security |
-| Mapa e localização | `react-native-maps` com tiles CARTO/OpenStreetMap (sem chave do Google), `expo-location` |
+| Mapa e localização | Leaflet em WebView com tiles do OpenStreetMap (sem chave de API), `expo-location` |
 | Dados dos restaurantes | OpenStreetMap (Overpass API) + cadastro manual no seed |
 | Recomendação | UBCF em TypeScript puro (`src/lib/ubcf.ts`), executado no app |
 | Testes e qualidade | Jest (`jest-expo`), ESLint (`eslint-config-expo`), TypeScript estrito |

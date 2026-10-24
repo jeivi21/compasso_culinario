@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
+import { MAPA_HTML, zoomParaRaio, type EstadoMapa } from '@/components/mapa-html';
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatarDistancia, type Coordenadas } from '@/lib/location';
@@ -17,137 +18,101 @@ export type MapaRestaurantesProps = {
   onSelecionar?: (restaurante: RestauranteProximo) => void;
 };
 
-/** Se o mapa não avisar que carregou até aqui, mostramos uma dica em vez de uma tela preta. */
-const TEMPO_LIMITE_CARGA_MS = 8_000;
+type Mensagem = { tipo: 'pronto' } | { tipo: 'selecionar'; id: string } | { tipo: 'limpar' };
 
 /**
- * Tiles do CARTO (dados OpenStreetMap), gratuitos e sem chave de API. O mapa base do
- * Google fica desligado (mapType none): no Expo Go não há chave do Google Maps e os
- * tiles dele vêm pretos. Os estilos "light/dark" do CARTO combinam com a paleta do app.
- */
-const TILES_CLARO = 'https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png';
-const TILES_CLARO_ROTULOS = 'https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png';
-const TILES_ESCURO = 'https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png';
-const TILES_ESCURO_ROTULOS = 'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png';
-
-/**
- * Mapa nativo estilizado na paleta do app, com um pino arredondado por restaurante
- * mostrando a nota. Tocar num pino destaca-o e abre um card resumido; o card leva
- * aos detalhes. A versão web está em mapa-restaurantes.web.tsx.
+ * Mapa em WebView (Leaflet + tiles CARTO/OpenStreetMap): não depende de chave do
+ * Google Maps, então funciona no Expo Go. Um pino arredondado por restaurante com a
+ * nota; tocar destaca e abre um card que leva aos detalhes.
+ * A versão web está em mapa-restaurantes.web.tsx.
  */
 export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSelecionar }: MapaRestaurantesProps) {
   const theme = useTheme();
   const escuro = useColorScheme() === 'dark';
-  const mapa = useRef<MapView>(null);
+  const webview = useRef<WebView>(null);
+  const [pronto, setPronto] = useState(false);
+  const [erro, setErro] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
-  const [carregou, setCarregou] = useState(false);
-  const [demorou, setDemorou] = useState(false);
   const selecionado = restaurantes.find((r) => r.id === selecionadoId) ?? null;
+  const zoom = zoomParaRaio(raioMetros);
 
+  // Reenvia o estado para a página sempre que algo muda (e assim que ela avisa que está pronta).
   useEffect(() => {
-    if (carregou) return;
-    const id = setTimeout(() => setDemorou(true), TEMPO_LIMITE_CARGA_MS);
-    return () => clearTimeout(id);
-  }, [carregou]);
+    if (!pronto) return;
+    const estado: EstadoMapa = {
+      centro,
+      zoom,
+      escuro,
+      selecionadoId,
+      restaurantes: restaurantes.map((r) => ({
+        id: r.id,
+        nome: r.nome,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        nota: formatarNota(r.media_geral),
+      })),
+    };
+    webview.current?.injectJavaScript(`window.atualizar(${JSON.stringify(estado)}); true;`);
+  }, [pronto, centro, zoom, escuro, selecionadoId, restaurantes]);
 
-  // 1 grau de latitude ≈ 111 km; o delta cobre o diâmetro do raio com folga.
-  const delta = (raioMetros * 2.4) / 111_000;
-
-  function selecionar(r: RestauranteProximo) {
-    setSelecionadoId(r.id);
-    mapa.current?.animateToRegion(
-      { latitude: r.latitude, longitude: r.longitude, latitudeDelta: delta / 3, longitudeDelta: delta / 3 },
-      350,
-    );
+  function aoReceber(evento: WebViewMessageEvent) {
+    let msg: Mensagem;
+    try {
+      msg = JSON.parse(evento.nativeEvent.data) as Mensagem;
+    } catch {
+      return;
+    }
+    if (msg.tipo === 'pronto') setPronto(true);
+    else if (msg.tipo === 'selecionar') {
+      const r = restaurantes.find((x) => x.id === msg.id);
+      if (r) {
+        setSelecionadoId(r.id);
+        webview.current?.injectJavaScript(`window.centralizar(${r.latitude}, ${r.longitude}, ${zoom + 2}); true;`);
+      }
+    } else if (msg.tipo === 'limpar') setSelecionadoId(null);
   }
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapa}
-        style={styles.mapa}
-        // O renderizador novo do Google Maps deixa o mapa preto em alguns Androids; o legado é estável.
-        googleRenderer="LEGACY"
-        mapType="none"
-        initialRegion={{
-          latitude: centro.latitude,
-          longitude: centro.longitude,
-          latitudeDelta: delta,
-          longitudeDelta: delta,
-        }}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        loadingEnabled
-        loadingIndicatorColor={theme.primary}
-        loadingBackgroundColor={theme.background}
-        onMapLoaded={() => setCarregou(true)}
-        onMapReady={() => setCarregou(true)}
-        onPress={() => setSelecionadoId(null)}>
-        <UrlTile urlTemplate={escuro ? TILES_ESCURO : TILES_CLARO} maximumZ={19} tileSize={256} zIndex={-2} />
-        <UrlTile urlTemplate={escuro ? TILES_ESCURO_ROTULOS : TILES_CLARO_ROTULOS} maximumZ={19} tileSize={256} zIndex={-1} />
-        {restaurantes.map((r) => {
-          const ativo = r.id === selecionadoId;
-          return (
-            <Marker
-              key={r.id}
-              coordinate={{ latitude: r.latitude, longitude: r.longitude }}
-              anchor={{ x: 0.5, y: 1 }}
-              // Só re-renderiza a imagem do pino quando o estado de seleção muda (desempenho).
-              tracksViewChanges={ativo}
-              zIndex={ativo ? 10 : 1}
-              onPress={(e) => {
-                e.stopPropagation();
-                selecionar(r);
-              }}>
-              <View style={styles.pino}>
-                <View
-                  style={[
-                    styles.pinoCorpo,
-                    {
-                      backgroundColor: ativo ? theme.primaryDark : theme.primary,
-                      borderColor: escuro ? '#0E2E2B' : '#FFFFFF',
-                      transform: [{ scale: ativo ? 1.15 : 1 }],
-                    },
-                  ]}>
-                  <Ionicons name="star" size={11} color={ativo ? '#F3FBF9' : '#0E2E2B'} />
-                  <ThemedText style={[styles.pinoTexto, { color: ativo ? '#F3FBF9' : '#0E2E2B' }]}>
-                    {formatarNota(r.media_geral)}
-                  </ThemedText>
-                </View>
-                <View style={[styles.pinoPonta, { borderTopColor: ativo ? theme.primaryDark : theme.primary }]} />
-              </View>
-            </Marker>
-          );
-        })}
-      </MapView>
+      <WebView
+        ref={webview}
+        originWhitelist={['*']}
+        source={{ html: MAPA_HTML, baseUrl: 'https://localhost/' }}
+        onMessage={aoReceber}
+        onError={() => setErro(true)}
+        javaScriptEnabled
+        domStorageEnabled
+        mixedContentMode="always"
+        setSupportMultipleWindows={false}
+        overScrollMode="never"
+        style={[styles.mapa, { backgroundColor: theme.background }]}
+      />
 
-      {!carregou ? (
+      {!pronto ? (
         <View style={[styles.carregando, { backgroundColor: theme.background }]} pointerEvents="none">
-          <ActivityIndicator color={theme.primary} size="large" />
-          <ThemedText themeColor="textSecondary" style={styles.carregandoTexto}>
-            {demorou
-              ? 'O mapa está demorando. Verifique a conexão ou use a lista; no Expo Go o mapa funciona só no Android.'
-              : 'Carregando mapa…'}
-          </ThemedText>
+          {erro ? (
+            <>
+              <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
+              <ThemedText themeColor="textSecondary" style={styles.carregandoTexto}>
+                O mapa não carregou. Verifique sua conexão ou use a lista.
+              </ThemedText>
+            </>
+          ) : (
+            <>
+              <ActivityIndicator color={theme.primary} size="large" />
+              <ThemedText themeColor="textSecondary">Carregando mapa…</ThemedText>
+            </>
+          )}
         </View>
       ) : null}
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Centralizar na minha posição"
-        onPress={() =>
-          mapa.current?.animateToRegion(
-            { latitude: centro.latitude, longitude: centro.longitude, latitudeDelta: delta, longitudeDelta: delta },
-            350,
-          )
-        }
+        onPress={() => webview.current?.injectJavaScript(`window.centralizar(${centro.latitude}, ${centro.longitude}, ${zoom}); true;`)}
         style={[styles.botaoCentro, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
         <Ionicons name="locate" size={22} color={theme.primaryDark} />
       </Pressable>
-
-      <ThemedText style={[styles.atribuicao, { color: escuro ? '#CDE9E4' : '#3F5F5B' }]}>© OpenStreetMap · © CARTO</ThemedText>
 
       {selecionado ? (
         <Pressable
@@ -184,8 +149,8 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // No Android, recortar o MapView (overflow hidden + borderRadius) pode deixá-lo preto.
-    ...(Platform.OS === 'ios' ? { borderRadius: Radius.medium, overflow: 'hidden' as const } : null),
+    borderRadius: Radius.medium,
+    overflow: 'hidden',
   },
   mapa: {
     flex: 1,
@@ -204,33 +169,6 @@ const styles = StyleSheet.create({
   carregandoTexto: {
     textAlign: 'center',
   },
-  pino: {
-    alignItems: 'center',
-  },
-  pinoCorpo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.pill,
-    borderWidth: 2,
-  },
-  pinoTexto: {
-    fontFamily: Fonts.bodyBold,
-    fontSize: 12,
-    lineHeight: 14,
-  },
-  pinoPonta: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 7,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    marginTop: -1,
-  },
   botaoCentro: {
     position: 'absolute',
     top: Spacing.three,
@@ -241,13 +179,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  atribuicao: {
-    position: 'absolute',
-    right: Spacing.two,
-    bottom: Spacing.one,
-    fontSize: 10,
-    lineHeight: 12,
   },
   card: {
     position: 'absolute',
