@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AvaliacaoItem } from '@/components/avaliacao-item';
 import { BotoesMarcacao } from '@/components/botoes-marcacao';
 import { Button } from '@/components/button';
+import { EstadoTela } from '@/components/estado-tela';
 import { NotaCriterio } from '@/components/nota-criterio';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
@@ -60,22 +61,20 @@ export default function RestauranteScreen() {
         }}
       />
       {!detalhes && !erro ? (
-        <View style={styles.centro}>
-          <ActivityIndicator color={theme.primary} size="large" />
-        </View>
+        <EstadoTela carregando />
       ) : erro && !detalhes ? (
-        <View style={styles.centro}>
-          <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
-          <ThemedText themeColor="textSecondary">{erro}</ThemedText>
-          <Button
-            title="Tentar de novo"
-            variant="secondary"
-            onPress={() => {
+        <EstadoTela
+          erro
+          icone="cloud-offline-outline"
+          mensagem={erro}
+          acao={{
+            titulo: 'Tentar de novo',
+            onPress: () => {
               setErro(null);
               setTentativa((t) => t + 1);
-            }}
-          />
-        </View>
+            },
+          }}
+        />
       ) : detalhes ? (
         <ScrollView contentContainerStyle={styles.conteudo}>
           <View style={styles.cabecalho}>
@@ -97,7 +96,7 @@ export default function RestauranteScreen() {
 
           <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
             <View style={styles.resumo}>
-              <ThemedText type="title" style={styles.notaGrande}>
+              <ThemedText type="title" style={styles.notaGrande} accessibilityRole="text">
                 {formatarNota(detalhes.resumo.media_geral)}
               </ThemedText>
               <View>

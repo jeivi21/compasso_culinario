@@ -49,7 +49,6 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
       selecionadoId,
       restaurantes: restaurantes.map((r) => ({
         id: r.id,
-        nome: r.nome,
         latitude: r.latitude,
         longitude: r.longitude,
         nota: formatarNota(r.media_geral),

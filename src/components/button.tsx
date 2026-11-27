@@ -1,12 +1,13 @@
-import { ActivityIndicator, Pressable, StyleSheet, type PressableProps } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Tocavel, type TocavelProps } from '@/components/tocavel';
+import { MinTouchTarget, PressedOpacity, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-type ButtonProps = Omit<PressableProps, 'children'> & {
+type ButtonProps = Omit<TocavelProps, 'children'> & {
   title: string;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   loading?: boolean;
 };
 
@@ -16,16 +17,19 @@ export function Button({ title, variant = 'primary', loading, disabled, style, .
 
   const background =
     variant === 'primary' ? theme.primary : variant === 'secondary' ? theme.backgroundElement : 'transparent';
-  const textColor = variant === 'primary' ? theme.onPrimary : theme.primaryDark;
+  const textColor =
+    variant === 'primary' ? theme.onPrimary : variant === 'danger' ? theme.danger : theme.primaryDark;
 
   return (
-    <Pressable
+    <Tocavel
       accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        { backgroundColor: background, opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1 },
-        typeof style === 'function' ? style({ pressed, hovered: false }) : style,
+        { backgroundColor: background, opacity: isDisabled ? 0.6 : pressed ? PressedOpacity : 1 },
+        typeof style === 'function' ? style({ pressed }) : style,
       ]}
       {...rest}>
       {loading ? (
@@ -35,7 +39,7 @@ export function Button({ title, variant = 'primary', loading, disabled, style, .
           {title}
         </ThemedText>
       )}
-    </Pressable>
+    </Tocavel>
   );
 }
 
@@ -43,9 +47,9 @@ const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.four,
     borderRadius: Radius.small,
-    minHeight: 52,
+    minHeight: MinTouchTarget + Spacing.two,
   },
 });

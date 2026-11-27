@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
+import Animated, { ZoomInRotate } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -13,11 +14,14 @@ type AuthHeaderProps = {
 export function AuthHeader({ title, subtitle }: AuthHeaderProps) {
   return (
     <View style={styles.container}>
-      <Image
-        source={require('@/assets/images/compass.svg')}
-        style={styles.logo}
-        accessibilityLabel="Bússola culinária, logo do CompassoCulinário"
-      />
+      {/* A bússola entra girando e assenta, como uma agulha encontrando o norte. */}
+      <Animated.View entering={ZoomInRotate.springify().damping(11).stiffness(110)}>
+        <Image
+          source={require('@/assets/images/compass.svg')}
+          style={styles.logo}
+          accessibilityLabel="Bússola culinária, logo do CompassoCulinário"
+        />
+      </Animated.View>
       <ThemedText type="subtitle" themeColor="primaryDark">
         CompassoCulinário
       </ThemedText>

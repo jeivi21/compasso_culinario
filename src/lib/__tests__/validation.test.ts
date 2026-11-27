@@ -31,10 +31,10 @@ describe('validarEmail', () => {
 });
 
 describe('validarSenha e confirmação', () => {
-  it('exige pelo menos 6 caracteres', () => {
+  it('exige pelo menos 8 caracteres', () => {
     expect(validarSenha('')).not.toBeNull();
-    expect(validarSenha('12345')).not.toBeNull();
-    expect(validarSenha('123456')).toBeNull();
+    expect(validarSenha('1234567')).not.toBeNull();
+    expect(validarSenha('12345678')).toBeNull();
   });
   it('confirmação precisa ser igual', () => {
     expect(validarConfirmacaoSenha('abc123', 'abc124')).not.toBeNull();

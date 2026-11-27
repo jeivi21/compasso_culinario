@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 export type Perfil = {
   id: string;
   nome: string;
-  email: string | null;
   onboarding_concluido: boolean;
 };
 
@@ -42,7 +41,7 @@ async function carregarPerfil(usuarioId: string): Promise<Perfil | null> {
   try {
     const { data } = await supabase
       .from('usuario')
-      .select('id, nome, email, onboarding_concluido')
+      .select('id, nome, onboarding_concluido')
       .eq('id', usuarioId)
       .maybeSingle();
     return data;

@@ -1,16 +1,18 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { FadeOutLeft, LinearTransition } from 'react-native-reanimated';
 
-import { Button } from '@/components/button';
+import { EstadoTela } from '@/components/estado-tela';
 import { Chip } from '@/components/chip';
+import { IconButton } from '@/components/icon-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { PressedOpacity, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import { listarFavoritos, removerFavorito, type Favorito, type TipoFavorito } from '@/lib/favoritos';
+import { confirmar } from '@/lib/confirmar';
 import { formatarFaixaPreco } from '@/lib/restaurantes';
 
 const ABAS: { tipo: TipoFavorito; label: string; vazio: string }[] = [
@@ -25,6 +27,7 @@ export default function FavoritosScreen() {
   const [itens, setItens] = useState<Favorito[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const [atualizando, setAtualizando] = useState(false);
 
   const usuarioId = session?.user.id;
 
@@ -39,7 +42,8 @@ export default function FavoritosScreen() {
           setItens(f);
           setErro(null);
         })
-        .catch(() => ativo && setErro('Não foi possível carregar.'));
+        .catch(() => ativo && setErro('Não foi possível carregar.'))
+        .finally(() => ativo && setAtualizando(false));
       return () => {
         ativo = false;
       };
@@ -70,6 +74,7 @@ export default function FavoritosScreen() {
             <Chip
               key={a.tipo}
               label={a.label}
+              role="tab"
               selected={tipo === a.tipo}
               onPress={() => {
                 if (a.tipo !== tipo) {
@@ -83,36 +88,51 @@ export default function FavoritosScreen() {
       </View>
 
       {itens === null && !erro ? (
-        <View style={styles.centro}>
-          <ActivityIndicator color={theme.primary} size="large" />
-        </View>
+        <EstadoTela carregando />
       ) : erro && !itens ? (
-        <View style={styles.centro}>
-          <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
-          <ThemedText themeColor="textSecondary">{erro}</ThemedText>
-          <Button title="Tentar de novo" variant="secondary" onPress={() => setTentativa((t) => t + 1)} />
-        </View>
+        <EstadoTela
+          erro
+          icone="cloud-offline-outline"
+          mensagem={erro}
+          acao={{ titulo: 'Tentar de novo', onPress: () => setTentativa((t) => t + 1) }}
+        />
       ) : (
-        <FlatList
+        <Animated.FlatList
+          itemLayoutAnimation={LinearTransition.springify().damping(18)}
           data={itens ?? []}
+          refreshControl={
+            <RefreshControl
+              refreshing={atualizando}
+              tintColor={theme.primary}
+              colors={[theme.primaryDark]}
+              onRefresh={() => {
+                setAtualizando(true);
+                setTentativa((t) => t + 1);
+              }}
+            />
+          }
           keyExtractor={(f) => f.id}
           contentContainerStyle={styles.lista}
           ItemSeparatorComponent={() => <View style={styles.separador} />}
-          ListHeaderComponent={erro ? <ThemedText themeColor="danger">{erro}</ThemedText> : null}
-          ListEmptyComponent={
-            <View style={styles.centro}>
-              <Ionicons name={tipo === 'favorito' ? 'heart-outline' : 'bookmark-outline'} size={48} color={theme.textMuted} />
-              <ThemedText themeColor="textSecondary" style={styles.centroTexto}>
-                {aba.vazio}
+          ListHeaderComponent={
+            erro ? (
+              <ThemedText themeColor="danger" accessibilityRole="alert">
+                {erro}
               </ThemedText>
-            </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <EstadoTela icone={tipo === 'favorito' ? 'heart-outline' : 'bookmark-outline'} mensagem={aba.vazio} />
           }
           renderItem={({ item }) => (
-            <View style={[styles.item, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
+            <Animated.View
+              exiting={FadeOutLeft.duration(220)}
+              style={[styles.item, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
               <Pressable
                 accessibilityRole="button"
+                accessibilityHint="Abre os detalhes do restaurante"
                 onPress={() => router.push(`/restaurante/${item.restaurante_id}`)}
-                style={({ pressed }) => [styles.corpo, { opacity: pressed ? 0.7 : 1 }]}>
+                style={({ pressed }) => [styles.corpo, { opacity: pressed ? PressedOpacity : 1 }]}>
                 <ThemedText type="bold" numberOfLines={1}>
                   {item.restaurante?.nome ?? 'Restaurante'}
                 </ThemedText>
@@ -127,15 +147,21 @@ export default function FavoritosScreen() {
                   </ThemedText>
                 ) : null}
               </Pressable>
-              <Pressable
-                accessibilityRole="button"
+              <IconButton
+                icon="close-circle"
+                size={24}
+                color={theme.textMuted}
                 accessibilityLabel={`Remover ${item.restaurante?.nome ?? ''} de ${aba.label}`}
-                hitSlop={8}
-                onPress={() => remover(item)}
-                style={styles.remover}>
-                <Ionicons name="close-circle" size={24} color={theme.textMuted} />
-              </Pressable>
-            </View>
+                onPress={() =>
+                  confirmar(
+                    'Remover dos salvos',
+                    `${item.restaurante?.nome ?? 'Este restaurante'} sai de ${aba.label}.`,
+                    'Remover',
+                    () => remover(item),
+                  )
+                }
+              />
+            </Animated.View>
           )}
         />
       )}
@@ -171,18 +197,5 @@ const styles = StyleSheet.create({
   corpo: {
     flex: 1,
     gap: Spacing.half,
-  },
-  remover: {
-    padding: Spacing.one,
-  },
-  centro: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.three,
-    padding: Spacing.four,
-  },
-  centroTexto: {
-    textAlign: 'center',
   },
 });

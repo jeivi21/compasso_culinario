@@ -1,8 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { IconePulsante } from '@/components/icone-pulsante';
 import { ThemedText } from '@/components/themed-text';
+import { Tocavel } from '@/components/tocavel';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { alternarMarcacao, buscarMarcacoes, type TipoFavorito } from '@/lib/favoritos';
@@ -62,7 +63,7 @@ export function BotoesMarcacao({ usuarioId, restauranteId, onErro }: BotoesMarca
       {BOTOES.map((b) => {
         const marcado = marcacoes?.has(b.tipo) ?? false;
         return (
-          <Pressable
+          <Tocavel
             key={b.tipo}
             accessibilityRole="button"
             accessibilityState={{ selected: marcado, busy: ocupado === b.tipo }}
@@ -72,15 +73,15 @@ export function BotoesMarcacao({ usuarioId, restauranteId, onErro }: BotoesMarca
               styles.botao,
               {
                 backgroundColor: marcado ? theme.backgroundElement : theme.backgroundCard,
-                borderColor: marcado ? theme.primary : theme.border,
-                opacity: pressed ? 0.8 : 1,
+                borderColor: marcado ? theme.primary : theme.borderStrong,
+                opacity: pressed ? 0.9 : 1,
               },
             ]}>
-            <Ionicons name={marcado ? b.ligado : b.desligado} size={20} color={theme.primaryDark} />
+            <IconePulsante ativo={marcado} name={marcado ? b.ligado : b.desligado} size={20} color={theme.primaryDark} />
             <ThemedText type="bold" themeColor="primaryDark">
               {b.label}
             </ThemedText>
-          </Pressable>
+          </Tocavel>
         );
       })}
     </View>

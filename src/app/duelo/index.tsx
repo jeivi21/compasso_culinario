@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { EstadoTela } from '@/components/estado-tela';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -40,6 +41,7 @@ export default function DuelosScreen() {
   const [duelos, setDuelos] = useState<Duelo[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const [atualizando, setAtualizando] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,7 +52,8 @@ export default function DuelosScreen() {
           setDuelos(d);
           setErro(null);
         })
-        .catch(() => ativo && setErro('Não foi possível carregar os duelos.'));
+        .catch(() => ativo && setErro('Não foi possível carregar os duelos.'))
+        .finally(() => ativo && setAtualizando(false));
       return () => {
         ativo = false;
       };
@@ -99,16 +102,27 @@ export default function DuelosScreen() {
     <Screen edges={['left', 'right', 'bottom']}>
       <Stack.Screen options={{ title: 'Duelos' }} />
       {duelos === null && !erro ? (
-        <View style={styles.centro}>
-          <ActivityIndicator color={theme.primary} size="large" />
-        </View>
+        <EstadoTela carregando />
       ) : duelos === null ? (
-        <View style={styles.centro}>
-          <ThemedText themeColor="textSecondary">{erro}</ThemedText>
-          <Button title="Tentar de novo" variant="secondary" onPress={() => setTentativa((t) => t + 1)} />
-        </View>
+        <EstadoTela
+          erro
+          icone="cloud-offline-outline"
+          mensagem={erro ?? undefined}
+          acao={{ titulo: 'Tentar de novo', onPress: () => setTentativa((t) => t + 1) }}
+        />
       ) : (
         <FlatList
+          refreshControl={
+            <RefreshControl
+              refreshing={atualizando}
+              tintColor={theme.primary}
+              colors={[theme.primaryDark]}
+              onRefresh={() => {
+                setAtualizando(true);
+                setTentativa((t) => t + 1);
+              }}
+            />
+          }
           data={[...ativos, ...encerrados]}
           keyExtractor={(d) => d.id}
           contentContainerStyle={styles.lista}
@@ -119,9 +133,13 @@ export default function DuelosScreen() {
                 Cada um escolhe um restaurante e um minijogo sorteado decide onde vocês vão.
               </ThemedText>
               <Button title="Novo duelo" onPress={() => router.push('/duelo/novo')} />
-              {erro ? <ThemedText themeColor="danger">{erro}</ThemedText> : null}
+              {erro ? (
+                <ThemedText themeColor="danger" accessibilityRole="alert">
+                  {erro}
+                </ThemedText>
+              ) : null}
               {ativos.length > 0 ? (
-                <ThemedText type="label" themeColor="textSecondary">
+                <ThemedText type="label" themeColor="textSecondary" accessibilityRole="header">
                   Em aberto ({ativos.length})
                 </ThemedText>
               ) : null}
@@ -130,7 +148,7 @@ export default function DuelosScreen() {
           renderItem={({ item, index }) => (
             <>
               {index === ativos.length && encerrados.length > 0 ? (
-                <ThemedText type="label" themeColor="textSecondary" style={styles.tituloSecao}>
+                <ThemedText type="label" themeColor="textSecondary" style={styles.tituloSecao} accessibilityRole="header">
                   Encerrados ({encerrados.length})
                 </ThemedText>
               ) : null}

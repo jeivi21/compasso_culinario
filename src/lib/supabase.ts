@@ -1,6 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
+
+import { armazenamentoSeguro } from '@/lib/armazenamento-seguro';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_KEY;
@@ -17,8 +18,9 @@ if (!supabaseUrl || !supabaseKey) {
  */
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    // No web o próprio navegador guarda a sessão; no nativo usamos AsyncStorage.
-    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
+    // No web o próprio navegador guarda a sessão; no nativo ela fica cifrada
+    // (chave no SecureStore, conteúdo no AsyncStorage).
+    storage: Platform.OS === 'web' ? undefined : armazenamentoSeguro,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

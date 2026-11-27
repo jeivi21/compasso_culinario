@@ -1,30 +1,22 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
 import { Button } from '@/components/button';
+import { IconButton } from '@/components/icon-button';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirmar } from '@/lib/confirmar';
 import { formatarNota } from '@/lib/formatacao';
 import { atualizarNome, buscarEstatisticas, type EstatisticasPerfil } from '@/lib/perfil';
 import { vizinhosDoUsuario, type VizinhoPerfil } from '@/lib/recomendacao';
 import { validarNome } from '@/lib/validation';
-
-function iniciais(nome: string): string {
-  return (
-    nome
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase())
-      .join('') || '?'
-  );
-}
 
 function membroDesde(iso: string | null): string {
   if (!iso) return '';
@@ -82,6 +74,8 @@ export default function PerfilScreen() {
   const [novoNome, setNovoNome] = useState('');
   const [erroNome, setErroNome] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [erroStats, setErroStats] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   // Recarrega ao voltar para a aba (novas avaliações, amigos e duelos mudam os números).
   useFocusEffect(
@@ -89,21 +83,29 @@ export default function PerfilScreen() {
       if (!usuarioId) return;
       let ativo = true;
       buscarEstatisticas(usuarioId)
-        .then((s) => ativo && setStats(s))
-        .catch(() => {});
+        .then((s) => {
+          if (!ativo) return;
+          setStats(s);
+          setErroStats(false);
+        })
+        .catch(() => ativo && setErroStats(true));
       vizinhosDoUsuario(usuarioId)
         .then((v) => ativo && setVizinhos(v))
         .catch(() => ativo && setVizinhos([]));
       return () => {
         ativo = false;
       };
-    }, [usuarioId]),
+      // `tentativa` força nova busca no "Tentar de novo".
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [usuarioId, tentativa]),
   );
 
-  async function sair() {
-    setSaindo(true);
-    await signOut();
-    // O guard de rotas leva de volta para o login.
+  function sair() {
+    confirmar('Sair da conta', 'Você precisará entrar de novo com e-mail e senha.', 'Sair', async () => {
+      setSaindo(true);
+      await signOut();
+      // O guard de rotas leva de volta para o login.
+    });
   }
 
   function abrirEdicao() {
@@ -141,22 +143,16 @@ export default function PerfilScreen() {
         <ThemedText type="title">Perfil</ThemedText>
 
         <View style={[styles.cartao, { backgroundColor: theme.backgroundElement }]}>
-          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-            <ThemedText type="title" style={{ color: theme.onPrimary }}>
-              {iniciais(nome)}
-            </ThemedText>
-          </View>
+          <Avatar nome={nome} tamanho={72} variante="destaque" />
           <View style={styles.identidade}>
             <View style={styles.linhaNome}>
               <ThemedText type="subtitle" numberOfLines={1} style={styles.nome}>
                 {nome}
               </ThemedText>
-              <Pressable accessibilityRole="button" accessibilityLabel="Editar nome" hitSlop={8} onPress={abrirEdicao}>
-                <Ionicons name="pencil" size={18} color={theme.primaryDark} />
-              </Pressable>
+              <IconButton icon="pencil" size={18} accessibilityLabel="Editar nome" onPress={abrirEdicao} style={styles.editarNome} />
             </View>
             <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-              {perfil?.email ?? session?.user.email}
+              {session?.user.email}
             </ThemedText>
             {stats?.membroDesde ? (
               <ThemedText type="small" themeColor="textMuted">
@@ -175,6 +171,22 @@ export default function PerfilScreen() {
           <Estatistica icone="trophy" valor={taxaVitoria} label={stats ? `${stats.duelosVencidos}/${stats.duelosJogados} duelos` : 'duelos'} />
         </View>
 
+        {erroStats ? (
+          <View style={styles.linhaErro}>
+            <ThemedText type="small" themeColor="danger" accessibilityRole="alert" style={styles.flex}>
+              Não foi possível carregar suas estatísticas.
+            </ThemedText>
+            <Button
+              title="Tentar de novo"
+              variant="secondary"
+              onPress={() => {
+                setErroStats(false);
+                setTentativa((t) => t + 1);
+              }}
+            />
+          </View>
+        ) : null}
+
         {stats?.categoriaFavorita ? (
           <View style={[styles.destaque, { backgroundColor: theme.backgroundCard, borderColor: theme.primary }]}>
             <Ionicons name="restaurant" size={24} color={theme.primaryDark} />
@@ -192,7 +204,7 @@ export default function PerfilScreen() {
         ) : null}
 
         <View style={styles.secao}>
-          <ThemedText type="label" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary" accessibilityRole="header">
             Gosto parecido com o seu
           </ThemedText>
           {vizinhos === null ? (
@@ -207,11 +219,7 @@ export default function PerfilScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vizinhos}>
               {vizinhos.map((v) => (
                 <View key={v.id} style={[styles.vizinho, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
-                  <View style={[styles.avatarPequeno, { backgroundColor: theme.backgroundElement }]}>
-                    <ThemedText type="bold" themeColor="primaryDark">
-                      {iniciais(v.nome)}
-                    </ThemedText>
-                  </View>
+                  <Avatar nome={v.nome} tamanho={40} style={styles.avatarPequeno} />
                   <ThemedText type="bold" numberOfLines={1} style={styles.vizinhoNome}>
                     {v.nome.split(' ')[0]}
                   </ThemedText>
@@ -237,16 +245,30 @@ export default function PerfilScreen() {
       </ScrollView>
 
       <Modal visible={editando} transparent animationType="fade" onRequestClose={() => setEditando(false)}>
-        <Pressable style={styles.fundoModal} onPress={() => setEditando(false)} accessibilityRole="button" accessibilityLabel="Fechar">
-          <Pressable style={[styles.modal, { backgroundColor: theme.background }]} onPress={() => {}}>
-            <ThemedText type="subtitle">Editar nome</ThemedText>
-            <TextField label="Nome" value={novoNome} onChangeText={setNovoNome} error={erroNome} autoFocus onSubmitEditing={salvarNome} />
-            <View style={styles.acoesModal}>
-              <Button title="Cancelar" variant="ghost" onPress={() => setEditando(false)} disabled={salvando} style={styles.flex} />
-              <Button title="Salvar" onPress={salvarNome} loading={salvando} style={styles.flex} />
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+          <View style={[styles.fundoModal, { backgroundColor: theme.overlay }]}>
+            {/* Toque fora fecha. Fica como irmão do conteúdo (não o envolve) para que o leitor
+                de tela alcance o campo e os botões; "Cancelar" é o caminho acessível. */}
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setEditando(false)}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+            <View
+              accessibilityViewIsModal
+              style={[styles.modal, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
+              <ThemedText type="subtitle" accessibilityRole="header">
+                Editar nome
+              </ThemedText>
+              <TextField label="Nome" value={novoNome} onChangeText={setNovoNome} error={erroNome} autoFocus onSubmitEditing={salvarNome} />
+              <View style={styles.acoesModal}>
+                <Button title="Cancelar" variant="ghost" onPress={() => setEditando(false)} disabled={salvando} style={styles.flex} />
+                <Button title="Salvar" onPress={salvarNome} loading={salvando} style={styles.flex} />
+              </View>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </Screen>
   );
@@ -265,13 +287,6 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     borderRadius: Radius.large,
   },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   identidade: {
     flex: 1,
     gap: 2,
@@ -283,6 +298,9 @@ const styles = StyleSheet.create({
   },
   nome: {
     flexShrink: 1,
+  },
+  editarNome: {
+    marginVertical: -Spacing.two,
   },
   grade: {
     flexDirection: 'row',
@@ -314,7 +332,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   vizinho: {
-    width: 120,
+    minWidth: 120,
+    maxWidth: 160,
     alignItems: 'center',
     gap: 2,
     padding: Spacing.two,
@@ -322,15 +341,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   avatarPequeno: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: Spacing.one,
   },
   vizinhoNome: {
-    maxWidth: 104,
+    maxWidth: 140,
   },
   menu: {
     gap: Spacing.two,
@@ -349,7 +363,6 @@ const styles = StyleSheet.create({
   },
   fundoModal: {
     flex: 1,
-    backgroundColor: 'rgba(14, 46, 43, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.four,
@@ -359,6 +372,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
     borderRadius: Radius.large,
+    borderWidth: 1,
   },
   acoesModal: {
     flexDirection: 'row',
@@ -366,5 +380,10 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  linhaErro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
 });

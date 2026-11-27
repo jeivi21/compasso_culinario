@@ -11,7 +11,8 @@
 
 export type RestauranteMapa = {
   id: string;
-  nome: string;
+  // Sem textos livres (ex.: nome): a página só desenha marcadores com a nota,
+  // então nada digitado por usuários chega ao HTML do mapa.
   latitude: number;
   longitude: number;
   nota: string;
@@ -27,13 +28,23 @@ export type EstadoMapa = {
 
 const LEAFLET_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
 const LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+// Hashes de integridade (SRI): a página só executa o Leaflet se o arquivo baixado for exatamente este.
+const LEAFLET_CSS_SRI = 'sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb';
+const LEAFLET_JS_SRI = 'sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO';
+// CSP: só scripts/estilos do cdnjs e inline, tiles do OpenStreetMap; nada de fetch/XHR.
+const CSP =
+  "default-src 'none'; script-src https://cdnjs.cloudflare.com 'unsafe-inline'; " +
+  "style-src https://cdnjs.cloudflare.com 'unsafe-inline'; " +
+  'img-src https://tile.openstreetmap.org https://cdnjs.cloudflare.com data:; ' +
+  "connect-src 'none'; base-uri 'none'; form-action 'none'";
 
 export const MAPA_HTML = `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<link rel="stylesheet" href="${LEAFLET_CSS}">
+<meta http-equiv="Content-Security-Policy" content="${CSP}">
+<link rel="stylesheet" href="${LEAFLET_CSS}" integrity="${LEAFLET_CSS_SRI}" crossorigin="anonymous">
 <style>
   html, body, #mapa { margin: 0; padding: 0; width: 100%; height: 100%; background: #0E2E2B; }
   .leaflet-control-attribution { font-size: 10px; background: rgba(255,255,255,0.7); }
@@ -55,7 +66,7 @@ export const MAPA_HTML = `<!doctype html>
 </head>
 <body>
 <div id="mapa"></div>
-<script src="${LEAFLET_JS}"></script>
+<script src="${LEAFLET_JS}" integrity="${LEAFLET_JS_SRI}" crossorigin="anonymous"></script>
 <script>
 (function () {
   // Tiles padrão do OpenStreetMap: gratuitos e sem chave. No modo escuro, um filtro CSS

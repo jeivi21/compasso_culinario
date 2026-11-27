@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 
 export type StatusAmizade = 'pendente' | 'aceita' | 'recusada';
 
-export type UsuarioResumo = { id: string; nome: string; email: string | null };
+export type UsuarioResumo = { id: string; nome: string };
 
 export type Amizade = {
   id: string;
@@ -25,8 +25,8 @@ export type Vinculo = {
 
 const SELECT_AMIZADE =
   'id, solicitante_id, destinatario_id, status, criado_em, ' +
-  'solicitante:usuario!amizade_solicitante_id_fkey(id, nome, email), ' +
-  'destinatario:usuario!amizade_destinatario_id_fkey(id, nome, email)';
+  'solicitante:usuario!amizade_solicitante_id_fkey(id, nome), ' +
+  'destinatario:usuario!amizade_destinatario_id_fkey(id, nome)';
 
 function paraVinculo(a: Amizade, meuId: string): Vinculo | null {
   const enviadoPorMim = a.solicitante_id === meuId;

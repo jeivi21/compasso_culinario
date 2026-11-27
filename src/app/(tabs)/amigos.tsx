@@ -1,12 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeOutLeft, LinearTransition } from 'react-native-reanimated';
 
+import { Avatar } from '@/components/avatar';
 import { Button } from '@/components/button';
+import { EstadoTela } from '@/components/estado-tela';
+import { IconButton } from '@/components/icon-button';
 import { Screen } from '@/components/screen';
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { Fonts, MinTouchTarget, PressedOpacity, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -19,22 +23,7 @@ import {
   type UsuarioResumo,
   type Vinculo,
 } from '@/lib/amigos';
-
-function Avatar({ nome, cor, corTexto }: { nome: string; cor: string; corTexto: string }) {
-  const iniciais = nome
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-  return (
-    <View style={[styles.avatar, { backgroundColor: cor }]}>
-      <ThemedText type="bold" style={{ color: corTexto }}>
-        {iniciais || '?'}
-      </ThemedText>
-    </View>
-  );
-}
+import { confirmar } from '@/lib/confirmar';
 
 export default function AmigosScreen() {
   const theme = useTheme();
@@ -44,6 +33,7 @@ export default function AmigosScreen() {
   const [vinculos, setVinculos] = useState<Vinculo[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const [atualizando, setAtualizando] = useState(false);
   const [termo, setTermo] = useState('');
   const [resultados, setResultados] = useState<UsuarioResumo[] | null>(null);
   const [buscando, setBuscando] = useState(false);
@@ -59,7 +49,8 @@ export default function AmigosScreen() {
           setVinculos(v);
           setErro(null);
         })
-        .catch(() => ativo && setErro('Não foi possível carregar seus amigos.'));
+        .catch(() => ativo && setErro('Não foi possível carregar seus amigos.'))
+        .finally(() => ativo && setAtualizando(false));
       return () => {
         ativo = false;
       };
@@ -116,35 +107,42 @@ export default function AmigosScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/duelo')}
-          style={({ pressed }) => [styles.botaoDuelos, { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 }]}>
+          style={({ pressed }) => [styles.botaoDuelos, { backgroundColor: theme.primary, opacity: pressed ? PressedOpacity : 1 }]}>
           <Ionicons name="flash" size={18} color={theme.onPrimary} />
           <ThemedText type="bold" style={{ color: theme.onPrimary }}>
             Duelos
           </ThemedText>
         </Pressable>
       </View>
-      <View style={[styles.busca, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
+      <View style={[styles.busca, { backgroundColor: theme.backgroundCard, borderColor: theme.borderStrong }]}>
         <Ionicons name="search" size={20} color={theme.textMuted} />
         <TextInput
           value={termo}
           onChangeText={setTermo}
-          placeholder="Buscar por nome ou e-mail"
+          placeholder="Nome ou e-mail completo"
+          accessibilityLabel="Buscar amigo por nome ou e-mail completo"
           placeholderTextColor={theme.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
+          returnKeyType="search"
           style={[styles.buscaInput, { color: theme.text }]}
         />
         {termo ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Limpar busca" hitSlop={8} onPress={() => setTermo('')}>
-            <Ionicons name="close-circle" size={20} color={theme.textMuted} />
-          </Pressable>
+          <IconButton
+            icon="close-circle"
+            size={20}
+            color={theme.textMuted}
+            accessibilityLabel="Limpar busca"
+            onPress={() => setTermo('')}
+            style={styles.limparBusca}
+          />
         ) : null}
       </View>
 
       {buscando ? <ActivityIndicator color={theme.primary} /> : null}
       {resultados ? (
         <View style={styles.secao}>
-          <ThemedText type="label" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary" accessibilityRole="header">
             Resultados
           </ThemedText>
           {resultados.length === 0 && !buscando ? (
@@ -154,13 +152,10 @@ export default function AmigosScreen() {
             const v = porUsuario.get(u.id);
             return (
               <View key={u.id} style={[styles.item, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
-                <Avatar nome={u.nome} cor={theme.backgroundElement} corTexto={theme.primaryDark} />
+                <Avatar nome={u.nome} />
                 <View style={styles.itemTexto}>
                   <ThemedText type="bold" numberOfLines={1}>
                     {u.nome}
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textMuted" numberOfLines={1}>
-                    {u.email ?? ''}
                   </ThemedText>
                 </View>
                 {!v ? (
@@ -203,12 +198,12 @@ export default function AmigosScreen() {
 
       {recebidos.length > 0 ? (
         <View style={styles.secao}>
-          <ThemedText type="label" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary" accessibilityRole="header">
             Pedidos recebidos ({recebidos.length})
           </ThemedText>
           {recebidos.map((v) => (
             <View key={v.amizadeId} style={[styles.item, { backgroundColor: theme.backgroundElement, borderColor: theme.primary }]}>
-              <Avatar nome={v.outro.nome} cor={theme.primary} corTexto={theme.onPrimary} />
+              <Avatar nome={v.outro.nome} variante="destaque" />
               <View style={styles.itemTexto}>
                 <ThemedText type="bold" numberOfLines={1}>
                   {v.outro.nome}
@@ -217,24 +212,23 @@ export default function AmigosScreen() {
                   quer ser seu amigo
                 </ThemedText>
               </View>
-              <Pressable
-                accessibilityRole="button"
+              <IconButton
+                icon="close"
+                size={24}
+                color={theme.textSecondary}
                 accessibilityLabel={`Recusar ${v.outro.nome}`}
-                hitSlop={8}
                 disabled={ocupado !== null}
                 onPress={() => agir(v.amizadeId, () => responderPedido(v.amizadeId, false))}
-                style={styles.icone}>
-                <Ionicons name="close" size={24} color={theme.textSecondary} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
+              />
+              <IconButton
+                icon="checkmark"
+                size={24}
+                color={theme.onPrimary}
+                backgroundColor={theme.primary}
                 accessibilityLabel={`Aceitar ${v.outro.nome}`}
-                hitSlop={8}
                 disabled={ocupado !== null}
                 onPress={() => agir(v.amizadeId, () => responderPedido(v.amizadeId, true))}
-                style={[styles.icone, { backgroundColor: theme.primary }]}>
-                <Ionicons name="checkmark" size={24} color={theme.onPrimary} />
-              </Pressable>
+              />
             </View>
           ))}
         </View>
@@ -242,12 +236,12 @@ export default function AmigosScreen() {
 
       {enviados.length > 0 ? (
         <View style={styles.secao}>
-          <ThemedText type="label" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary" accessibilityRole="header">
             Pedidos enviados ({enviados.length})
           </ThemedText>
           {enviados.map((v) => (
             <View key={v.amizadeId} style={[styles.item, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
-              <Avatar nome={v.outro.nome} cor={theme.backgroundElement} corTexto={theme.primaryDark} />
+              <Avatar nome={v.outro.nome} />
               <View style={styles.itemTexto}>
                 <ThemedText type="bold" numberOfLines={1}>
                   {v.outro.nome}
@@ -256,21 +250,19 @@ export default function AmigosScreen() {
                   aguardando resposta
                 </ThemedText>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                hitSlop={8}
+              <Button
+                title="Cancelar"
+                variant="ghost"
                 disabled={ocupado !== null}
-                onPress={() => agir(v.amizadeId, () => removerVinculo(v.amizadeId))}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Cancelar
-                </ThemedText>
-              </Pressable>
+                onPress={() => agir(v.amizadeId, () => removerVinculo(v.amizadeId))}
+                style={styles.botaoPequeno}
+              />
             </View>
           ))}
         </View>
       ) : null}
 
-      <ThemedText type="label" themeColor="textSecondary" style={styles.tituloLista}>
+      <ThemedText type="label" themeColor="textSecondary" style={styles.tituloLista} accessibilityRole="header">
         Meus amigos ({amigos.length})
       </ThemedText>
     </View>
@@ -283,18 +275,29 @@ export default function AmigosScreen() {
           <ThemedText type="title" style={styles.tituloCarregando}>
             Amigos
           </ThemedText>
-          <View style={styles.centro}>
-            <ActivityIndicator color={theme.primary} size="large" />
-          </View>
+          <EstadoTela carregando />
         </>
       ) : vinculos === null ? (
-        <View style={styles.centro}>
-          <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
-          <ThemedText themeColor="textSecondary">{erro}</ThemedText>
-          <Button title="Tentar de novo" variant="secondary" onPress={recarregar} />
-        </View>
+        <EstadoTela
+          erro
+          icone="cloud-offline-outline"
+          mensagem={erro ?? undefined}
+          acao={{ titulo: 'Tentar de novo', onPress: recarregar }}
+        />
       ) : (
-        <FlatList
+        <Animated.FlatList
+          itemLayoutAnimation={LinearTransition.springify().damping(18)}
+          refreshControl={
+            <RefreshControl
+              refreshing={atualizando}
+              tintColor={theme.primary}
+              colors={[theme.primaryDark]}
+              onRefresh={() => {
+                setAtualizando(true);
+                recarregar();
+              }}
+            />
+          }
           data={amigos}
           keyExtractor={(v) => v.amizadeId}
           ListHeaderComponent={cabecalho}
@@ -310,33 +313,38 @@ export default function AmigosScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <View style={[styles.item, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
-              <Avatar nome={item.outro.nome} cor={theme.backgroundElement} corTexto={theme.primaryDark} />
+            <Animated.View
+              exiting={FadeOutLeft.duration(220)}
+              style={[styles.item, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
+              <Avatar nome={item.outro.nome} />
               <View style={styles.itemTexto}>
                 <ThemedText type="bold" numberOfLines={1}>
                   {item.outro.nome}
                 </ThemedText>
-                <ThemedText type="small" themeColor="textMuted" numberOfLines={1}>
-                  {item.outro.email ?? ''}
-                </ThemedText>
               </View>
-              <Pressable
-                accessibilityRole="button"
+              <IconButton
+                icon="flash"
+                size={20}
+                backgroundColor={theme.backgroundElement}
                 accessibilityLabel={`Desafiar ${item.outro.nome}`}
-                hitSlop={8}
                 onPress={() => router.push({ pathname: '/duelo/novo', params: { amigoId: item.outro.id } })}
-                style={[styles.icone, { backgroundColor: theme.backgroundElement }]}>
-                <Ionicons name="flash" size={20} color={theme.primaryDark} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
+              />
+              <IconButton
+                icon="person-remove-outline"
+                size={22}
+                color={theme.textMuted}
                 accessibilityLabel={`Desfazer amizade com ${item.outro.nome}`}
-                hitSlop={8}
                 disabled={ocupado !== null}
-                onPress={() => agir(item.amizadeId, () => removerVinculo(item.amizadeId))}>
-                <Ionicons name="person-remove-outline" size={22} color={theme.textMuted} />
-              </Pressable>
-            </View>
+                onPress={() =>
+                  confirmar(
+                    'Desfazer amizade',
+                    `Você e ${item.outro.nome} deixam de ser amigos. Duelos em aberto ficam como estão.`,
+                    'Desfazer',
+                    () => agir(item.amizadeId, () => removerVinculo(item.amizadeId)),
+                  )
+                }
+              />
+            </Animated.View>
           )}
         />
       )}
@@ -399,22 +407,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  icone: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  limparBusca: {
+    marginRight: -Spacing.two,
   },
   botaoPequeno: {
-    minHeight: 40,
+    minHeight: MinTouchTarget,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
   },

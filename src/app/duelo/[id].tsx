@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 
 import { Button } from '@/components/button';
 import { Screen } from '@/components/screen';
@@ -12,10 +13,12 @@ import { infoJogo } from '@/games';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
 import {
+  abandoneiRodada,
   aceitarDuelo,
   adversario,
   buscarDuelo,
   cancelarDuelo,
+  iniciarJogo,
   meuLado,
   meuPlacar,
   ouvirDuelo,
@@ -25,6 +28,7 @@ import {
   traduzirErroDuelo,
   type Duelo,
 } from '@/lib/duelos';
+import { confirmar } from '@/lib/confirmar';
 import type { RestauranteProximo } from '@/lib/restaurantes';
 
 function formatarPlacar(p: number | null): string {
@@ -47,6 +51,8 @@ export default function DueloScreen() {
   // e zera os placares, então um placar de rodada antiga não vale mais.
   const [placarRodada, setPlacarRodada] = useState<{ rodada: number; placar: number } | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  // O placar só conta quando o banco confirma; se o envio falhar, oferecemos reenviar.
+  const [envioFalhou, setEnvioFalhou] = useState(false);
 
   const rodada = duelo?.rodada ?? 1;
 
@@ -85,15 +91,27 @@ export default function DueloScreen() {
     }
   }
 
+  const enviarPlacar = useCallback(
+    (placar: number) => {
+      setEnvioFalhou(false);
+      setAcaoErro(null);
+      registrarPlacar(id, placar)
+        .then(recarregar)
+        .catch((e) => {
+          setEnvioFalhou(true);
+          setAcaoErro(traduzirErroDuelo(e instanceof Error ? e.message : ''));
+        });
+    },
+    [id, recarregar],
+  );
+
   const aoTerminarJogo = useCallback(
     (placar: number) => {
       setPlacarRodada({ rodada, placar });
       setJogando(false);
-      registrarPlacar(id, placar)
-        .then(recarregar)
-        .catch((e) => setAcaoErro(traduzirErroDuelo(e instanceof Error ? e.message : '')));
+      enviarPlacar(placar);
     },
-    [id, recarregar, rodada],
+    [enviarPlacar, rodada],
   );
 
   if (!duelo) {
@@ -123,11 +141,22 @@ export default function DueloScreen() {
   const meu = meuPlacar(duelo, meuId);
   const dele = placarAdversario(duelo, meuId);
 
+  function desistir() {
+    confirmar('Desistir da rodada', 'Sua vez conta como 0 pontos.', 'Desistir', () => aoTerminarJogo(0));
+  }
+
   // --- Jogando: o minijogo ocupa a tela ---------------------------------
   if (jogando && jogo) {
     return (
       <Screen edges={['left', 'right', 'bottom']}>
-        <Stack.Screen options={{ title: jogo.nome, headerBackVisible: false, gestureEnabled: false }} />
+        <Stack.Screen
+          options={{
+            title: jogo.nome,
+            headerBackVisible: false,
+            gestureEnabled: false,
+            headerRight: () => <Button title="Desistir" variant="danger" onPress={desistir} style={styles.desistir} />,
+          }}
+        />
         <View style={styles.jogo}>
           <jogo.Componente
             key={`${duelo.id}-${duelo.rodada}`}
@@ -146,7 +175,9 @@ export default function DueloScreen() {
         <ThemedText type="label" themeColor="textSecondary">
           Você
         </ThemedText>
-        <ThemedText type="title">{formatarPlacar(meu ?? placarLocal)}</ThemedText>
+        <ThemedText type="title" accessibilityRole="text">
+          {formatarPlacar(meu ?? placarLocal)}
+        </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.centroTexto}>
           {meuRestaurante?.nome ?? '—'}
         </ThemedText>
@@ -158,7 +189,9 @@ export default function DueloScreen() {
         <ThemedText type="label" themeColor="textSecondary" numberOfLines={1}>
           {outro?.nome.split(' ')[0] ?? 'Adversário'}
         </ThemedText>
-        <ThemedText type="title">{formatarPlacar(dele)}</ThemedText>
+        <ThemedText type="title" accessibilityRole="text">
+          {formatarPlacar(dele)}
+        </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={2} style={styles.centroTexto}>
           {restauranteOutro?.nome ?? 'ainda não escolheu'}
         </ThemedText>
@@ -185,11 +218,22 @@ export default function DueloScreen() {
           />
         </View>
         <View style={styles.acoes}>
-          <Button title="Recusar" variant="ghost" onPress={() => agir(() => recusarDuelo(duelo.id))} disabled={ocupado} style={styles.flex} />
+          <Button
+            title="Recusar"
+            variant="ghost"
+            onPress={() =>
+              confirmar('Recusar desafio', `${outro?.nome ?? 'Seu amigo'} será avisado de que você recusou.`, 'Recusar', () =>
+                agir(() => recusarDuelo(duelo.id)),
+              )
+            }
+            disabled={ocupado}
+            style={styles.flex}
+          />
           <Button
             title="Aceitar e sortear jogo"
             onPress={() => escolha && agir(() => aceitarDuelo(duelo.id, escolha.id))}
             disabled={!escolha}
+            accessibilityHint={escolha ? undefined : 'Escolha um restaurante na lista acima para aceitar'}
             loading={ocupado}
             style={styles.flex2}
           />
@@ -206,7 +250,16 @@ export default function DueloScreen() {
         <ThemedText themeColor="textSecondary" style={styles.centroTexto}>
           Assim que aceitar e escolher o restaurante, o jogo é sorteado e você é avisado aqui.
         </ThemedText>
-        <Button title="Cancelar desafio" variant="ghost" onPress={() => agir(() => cancelarDuelo(duelo.id))} loading={ocupado} />
+        <Button
+          title="Cancelar desafio"
+          variant="danger"
+          onPress={() =>
+            confirmar('Cancelar desafio', 'O desafio será desfeito para os dois.', 'Cancelar desafio', () =>
+              agir(() => cancelarDuelo(duelo.id)),
+            )
+          }
+          loading={ocupado}
+        />
       </View>
     );
   } else if (duelo.status === 'em_andamento' && jogo) {
@@ -233,7 +286,22 @@ export default function DueloScreen() {
             </ThemedText>
           ) : null}
         </View>
-        {jaJoguei ? (
+        {!jaJoguei && abandoneiRodada(duelo, meuId) ? (
+          <>
+            <ThemedText themeColor="textSecondary" style={styles.centroTexto}>
+              Você saiu no meio da partida. Cada rodada só pode ser jogada uma vez, então sua vez conta
+              como 0 pontos.
+            </ThemedText>
+            <Button title="Encerrar minha vez (0 pontos)" variant="secondary" onPress={() => aoTerminarJogo(0)} />
+          </>
+        ) : jaJoguei && envioFalhou && meu === null && placarLocal !== null ? (
+          <>
+            <ThemedText themeColor="danger" style={styles.centroTexto} accessibilityRole="alert">
+              Seu placar ({formatarPlacar(placarLocal)} pontos) não foi enviado.
+            </ThemedText>
+            <Button title="Enviar placar de novo" onPress={() => enviarPlacar(placarLocal)} />
+          </>
+        ) : jaJoguei ? (
           <>
             <ThemedText themeColor="textSecondary" style={styles.centroTexto}>
               {dele === null
@@ -243,7 +311,23 @@ export default function DueloScreen() {
             <ActivityIndicator color={theme.primary} />
           </>
         ) : (
-          <Button title="Jogar agora" onPress={() => setJogando(true)} />
+          <Button
+            title="Jogar agora"
+            loading={ocupado}
+            onPress={async () => {
+              setOcupado(true);
+              setAcaoErro(null);
+              try {
+                await iniciarJogo(duelo.id);
+                setJogando(true);
+              } catch (e) {
+                setAcaoErro(traduzirErroDuelo(e instanceof Error ? e.message : ''));
+                recarregar();
+              } finally {
+                setOcupado(false);
+              }
+            }}
+          />
         )}
       </View>
     );
@@ -252,10 +336,15 @@ export default function DueloScreen() {
     const vencedorRestaurante = duelo.vencedor_id === duelo.desafiante_id ? duelo.restaurante_desafiante : duelo.restaurante_desafiado;
     corpo = (
       <View style={styles.bloco}>
-        <Ionicons name={venci ? 'trophy' : 'restaurant'} size={64} color={venci ? theme.star : theme.primary} />
-        <ThemedText type="title" style={styles.centroTexto}>
-          {venci ? 'Você venceu!' : `${outro?.nome.split(' ')[0]} venceu`}
-        </ThemedText>
+        {/* O resultado chega de uma vez: o troféu "cai" na mesa e o título vem logo depois. */}
+        <Animated.View entering={ZoomIn.springify().damping(9).stiffness(180)}>
+          <Ionicons name={venci ? 'trophy' : 'restaurant'} size={72} color={venci ? theme.star : theme.primary} />
+        </Animated.View>
+        <Animated.View entering={FadeInDown.delay(180).duration(320)}>
+          <ThemedText type="title" style={styles.centroTexto}>
+            {venci ? 'Você venceu!' : `${outro?.nome.split(' ')[0]} venceu`}
+          </ThemedText>
+        </Animated.View>
         <ThemedText themeColor="textSecondary" style={styles.centroTexto}>
           Vocês vão ao <ThemedText type="bold">{vencedorRestaurante?.nome}</ThemedText>. Já está na lista Quero ir
           dos dois.
@@ -281,7 +370,11 @@ export default function DueloScreen() {
       <Stack.Screen options={{ title: `Duelo vs ${outro?.nome.split(' ')[0] ?? ''}` }} />
       <ScrollView contentContainerStyle={styles.conteudo} keyboardShouldPersistTaps="handled">
         {placarCard}
-        {acaoErro ? <ThemedText themeColor="danger">{acaoErro}</ThemedText> : null}
+        {acaoErro ? (
+          <ThemedText themeColor="danger" accessibilityRole="alert" accessibilityLiveRegion="polite">
+            {acaoErro}
+          </ThemedText>
+        ) : null}
         {corpo}
       </ScrollView>
     </Screen>
@@ -333,6 +426,11 @@ const styles = StyleSheet.create({
   },
   paragrafo: {
     paddingBottom: Spacing.two,
+  },
+  desistir: {
+    minHeight: 40,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 0,
   },
   acoes: {
     flexDirection: 'row',

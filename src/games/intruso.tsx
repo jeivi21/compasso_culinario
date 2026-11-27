@@ -99,7 +99,9 @@ export function Intruso({ semente, onFim }: PropsJogo) {
             <Pressable
               key={`${indice}-${i}`}
               accessibilityRole="button"
-              accessibilityLabel={i === rodada.posicao ? 'Intruso' : 'Comum'}
+              // O rótulo é o próprio emoji (o leitor de tela diz o nome dele) + a posição;
+              // nunca "intruso"/"comum", que entregaria a resposta.
+              accessibilityLabel={`${i === rodada.posicao ? rodada.intruso : rodada.comum}, linha ${Math.floor(i / LADO) + 1}, coluna ${(i % LADO) + 1}`}
               onPress={() => tocar(i)}
               style={[
                 styles.celula,

@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { AuthHeader } from '@/components/auth-header';
 import { Button } from '@/components/button';
@@ -17,6 +17,7 @@ export default function LoginScreen() {
   const [erros, setErros] = useState<{ email?: string | null; senha?: string | null }>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const senhaRef = useRef<TextInput>(null);
 
   async function entrar() {
     if (enviando) return; // Enter repetido no teclado não dispara dois logins
@@ -36,9 +37,8 @@ export default function LoginScreen() {
 
   return (
     <Screen edges={['top', 'bottom', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Apps Expo são edge-to-edge: a janela não encolhe com o teclado, então o padding é preciso nas duas plataformas. */}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <AuthHeader title="Bem-vindo de volta" subtitle="Entre para ver suas recomendações." />
 
@@ -53,8 +53,12 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoComplete="email"
               textContentType="emailAddress"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => senhaRef.current?.focus()}
             />
             <TextField
+              ref={senhaRef}
               label="Senha"
               value={senha}
               onChangeText={setSenha}
@@ -63,6 +67,7 @@ export default function LoginScreen() {
               secureTextEntry
               autoComplete="password"
               textContentType="password"
+              returnKeyType="go"
               onSubmitEditing={entrar}
             />
             {erroGeral ? (

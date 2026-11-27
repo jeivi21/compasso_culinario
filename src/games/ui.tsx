@@ -24,7 +24,7 @@ export function PainelJogo({ itens }: { itens: { label: string; valor: string }[
 /** Mensagem curta de instrução acima da área de jogo. */
 export function Instrucao({ children }: { children: string }) {
   return (
-    <ThemedText themeColor="textSecondary" style={styles.instrucao}>
+    <ThemedText themeColor="textSecondary" style={styles.instrucao} accessibilityLiveRegion="polite">
       {children}
     </ThemedText>
   );

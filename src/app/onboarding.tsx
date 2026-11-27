@@ -30,6 +30,7 @@ export default function OnboardingScreen() {
   const [notas, setNotas] = useState<Record<string, number>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let ativo = true;
@@ -39,7 +40,7 @@ export default function OnboardingScreen() {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [tentativa]);
 
   const avaliados = Object.keys(notas).length;
   const progresso = Math.min(1, avaliados / META);
@@ -74,8 +75,12 @@ export default function OnboardingScreen() {
         parecido com o seu.
       </ThemedText>
       <View style={styles.progresso}>
-        <View style={[styles.trilho, { backgroundColor: theme.backgroundElement }]}>
-          <View style={[styles.barra, { width: `${progresso * 100}%`, backgroundColor: theme.primary }]} />
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Restaurantes avaliados"
+          accessibilityValue={{ min: 0, max: META, now: Math.min(avaliados, META) }}
+          style={[styles.trilho, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.barra, { width: `${progresso * 100}%`, backgroundColor: theme.primaryDark }]} />
         </View>
         <ThemedText type="bold">
           {Math.min(avaliados, META)} de {META}
@@ -120,6 +125,7 @@ export default function OnboardingScreen() {
               <Estrelas
                 valor={notas[item.id] ?? 0}
                 tamanho={28}
+                rotulo={item.nome}
                 onChange={(v) => setNotas((n) => ({ ...n, [item.id]: v }))}
               />
             </View>
@@ -128,7 +134,17 @@ export default function OnboardingScreen() {
             erro ? (
               <View style={styles.centro}>
                 <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
-                <ThemedText themeColor="textSecondary">{erro}</ThemedText>
+                <ThemedText themeColor="textSecondary" accessibilityLiveRegion="polite">
+                  {erro}
+                </ThemedText>
+                <Button
+                  title="Tentar de novo"
+                  variant="secondary"
+                  onPress={() => {
+                    setErro(null);
+                    setTentativa((t) => t + 1);
+                  }}
+                />
               </View>
             ) : null
           }
@@ -179,15 +195,12 @@ const styles = StyleSheet.create({
     height: Spacing.two,
   },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
     padding: Spacing.three,
     borderRadius: Radius.medium,
     borderWidth: 1,
   },
   itemTexto: {
-    flex: 1,
     gap: Spacing.half,
   },
   rodape: {
