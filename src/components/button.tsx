@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 type ButtonProps = Omit<TocavelProps, 'children'> & {
   title: string;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'destructive';
   loading?: boolean;
 };
 
@@ -16,9 +16,21 @@ export function Button({ title, variant = 'primary', loading, disabled, style, .
   const isDisabled = disabled || loading;
 
   const background =
-    variant === 'primary' ? theme.primary : variant === 'secondary' ? theme.backgroundElement : 'transparent';
+    variant === 'primary'
+      ? theme.primary
+      : variant === 'secondary'
+        ? theme.backgroundElement
+        : variant === 'destructive'
+          ? theme.danger
+          : 'transparent';
   const textColor =
-    variant === 'primary' ? theme.onPrimary : variant === 'danger' ? theme.danger : theme.primaryDark;
+    variant === 'primary'
+      ? theme.onPrimary
+      : variant === 'destructive'
+        ? theme.onDanger
+        : variant === 'danger'
+          ? theme.danger
+          : theme.primaryDark;
 
   return (
     <Tocavel

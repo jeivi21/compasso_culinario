@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } 
 
 import { Avatar } from '@/components/avatar';
 import { Button } from '@/components/button';
+import { DialogoExcluirConta } from '@/components/dialogo-excluir-conta';
 import { IconButton } from '@/components/icon-button';
 import { Screen } from '@/components/screen';
 import { TextField } from '@/components/text-field';
@@ -12,7 +13,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { alertar, confirmar } from '@/lib/confirmar';
+import { confirmar } from '@/lib/confirmar';
 import { formatarNota } from '@/lib/formatacao';
 import { atualizarNome, buscarEstatisticas, type EstatisticasPerfil } from '@/lib/perfil';
 import { vizinhosDoUsuario, type VizinhoPerfil } from '@/lib/recomendacao';
@@ -71,6 +72,8 @@ export default function PerfilScreen() {
   const [vizinhos, setVizinhos] = useState<VizinhoPerfil[] | null>(null);
   const [saindo, setSaindo] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [dialogoExclusao, setDialogoExclusao] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [editando, setEditando] = useState(false);
   const [novoNome, setNovoNome] = useState('');
   const [erroNome, setErroNome] = useState<string | null>(null);
@@ -110,21 +113,20 @@ export default function PerfilScreen() {
   }
 
   function pedirExclusao() {
-    confirmar(
-      'Excluir conta',
-      'Sua conta, avaliações, favoritos, amizades e duelos serão apagados para sempre. Essa ação não pode ser desfeita.',
-      'Excluir conta',
-      async () => {
-        setExcluindo(true);
-        try {
-          await excluirConta();
-          // Sem sessão, o guard de rotas leva de volta para o login.
-        } catch {
-          setExcluindo(false);
-          alertar('Não foi possível excluir a conta', 'Verifique sua conexão e tente de novo.');
-        }
-      },
-    );
+    setErroExclusao(null);
+    setDialogoExclusao(true);
+  }
+
+  async function confirmarExclusao() {
+    setExcluindo(true);
+    setErroExclusao(null);
+    try {
+      await excluirConta();
+      // Sem sessão, o guard de rotas leva de volta para o login.
+    } catch {
+      setExcluindo(false);
+      setErroExclusao('Não foi possível excluir a conta. Verifique sua conexão e tente de novo.');
+    }
   }
 
   function abrirEdicao() {
@@ -290,6 +292,14 @@ export default function PerfilScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <DialogoExcluirConta
+        visivel={dialogoExclusao}
+        excluindo={excluindo}
+        erro={erroExclusao}
+        aoCancelar={() => setDialogoExclusao(false)}
+        aoConfirmar={confirmarExclusao}
+      />
     </Screen>
   );
 }
