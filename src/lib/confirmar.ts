@@ -14,3 +14,12 @@ export function confirmar(titulo: string, mensagem: string, rotuloConfirmar: str
     { text: rotuloConfirmar, style: 'destructive', onPress: aoConfirmar },
   ]);
 }
+
+/** Mostra um aviso simples. No web usa `window.alert`. */
+export function alertar(titulo: string, mensagem: string) {
+  if (Platform.OS === 'web') {
+    window.alert(`${titulo}\n\n${mensagem}`);
+    return;
+  }
+  Alert.alert(titulo, mensagem);
+}

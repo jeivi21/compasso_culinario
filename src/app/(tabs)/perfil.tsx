@@ -12,7 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
-import { confirmar } from '@/lib/confirmar';
+import { alertar, confirmar } from '@/lib/confirmar';
 import { formatarNota } from '@/lib/formatacao';
 import { atualizarNome, buscarEstatisticas, type EstatisticasPerfil } from '@/lib/perfil';
 import { vizinhosDoUsuario, type VizinhoPerfil } from '@/lib/recomendacao';
@@ -64,12 +64,13 @@ function ItemMenu({ icone, titulo, detalhe, onPress }: { icone: keyof typeof Ion
 
 export default function PerfilScreen() {
   const theme = useTheme();
-  const { session, perfil, signOut, recarregarPerfil } = useAuth();
+  const { session, perfil, signOut, excluirConta, recarregarPerfil } = useAuth();
   const usuarioId = session?.user.id;
 
   const [stats, setStats] = useState<EstatisticasPerfil | null>(null);
   const [vizinhos, setVizinhos] = useState<VizinhoPerfil[] | null>(null);
   const [saindo, setSaindo] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [editando, setEditando] = useState(false);
   const [novoNome, setNovoNome] = useState('');
   const [erroNome, setErroNome] = useState<string | null>(null);
@@ -106,6 +107,24 @@ export default function PerfilScreen() {
       await signOut();
       // O guard de rotas leva de volta para o login.
     });
+  }
+
+  function pedirExclusao() {
+    confirmar(
+      'Excluir conta',
+      'Sua conta, avaliações, favoritos, amizades e duelos serão apagados para sempre. Essa ação não pode ser desfeita.',
+      'Excluir conta',
+      async () => {
+        setExcluindo(true);
+        try {
+          await excluirConta();
+          // Sem sessão, o guard de rotas leva de volta para o login.
+        } catch {
+          setExcluindo(false);
+          alertar('Não foi possível excluir a conta', 'Verifique sua conexão e tente de novo.');
+        }
+      },
+    );
   }
 
   function abrirEdicao() {
@@ -241,7 +260,8 @@ export default function PerfilScreen() {
           <ItemMenu icone="heart-outline" titulo="Salvos" detalhe="Favoritos e Quero ir" onPress={() => router.push('/favoritos')} />
         </View>
 
-        <Button title="Sair" variant="secondary" onPress={sair} loading={saindo} />
+        <Button title="Sair" variant="secondary" onPress={sair} loading={saindo} disabled={excluindo} />
+        <Button title="Excluir conta" variant="danger" onPress={pedirExclusao} loading={excluindo} disabled={saindo} />
       </ScrollView>
 
       <Modal visible={editando} transparent animationType="fade" onRequestClose={() => setEditando(false)}>

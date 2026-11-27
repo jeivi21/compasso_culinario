@@ -17,6 +17,8 @@ type AuthContextValue = {
   /** `true` enquanto a sessão salva (e o perfil) ainda estão sendo restaurados. */
   isLoading: boolean;
   signOut: () => Promise<void>;
+  /** Apaga a conta do usuário logado (e todos os dados dele) e encerra a sessão local. */
+  excluirConta: () => Promise<void>;
   /** Marca o onboarding como concluído no banco e no estado local. */
   concluirOnboarding: () => Promise<void>;
   /** Recarrega o perfil do banco (depois de editar o nome, por exemplo). */
@@ -108,6 +110,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         isLoading,
         signOut: async () => {
           await supabase.auth.signOut();
+        },
+        excluirConta: async () => {
+          const { error } = await supabase.rpc('excluir_minha_conta');
+          if (error) throw error;
+          // O usuário já não existe no servidor: só limpa a sessão do aparelho.
+          await supabase.auth.signOut({ scope: 'local' });
         },
         concluirOnboarding,
         recarregarPerfil,
