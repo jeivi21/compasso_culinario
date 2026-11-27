@@ -16,7 +16,7 @@ export function validarEmail(email: string): string | null {
 
 export function validarSenha(senha: string): string | null {
   if (!senha) return 'Informe sua senha.';
-  if (senha.length < 6) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (senha.length < 8) return 'A senha precisa ter pelo menos 8 caracteres.';
   return null;
 }
 

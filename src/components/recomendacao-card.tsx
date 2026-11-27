@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Tocavel } from '@/components/tocavel';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatarDistancia } from '@/lib/location';
@@ -27,15 +28,23 @@ export function RecomendacaoCard({ recomendacao, posicao, onPress }: Recomendaca
   const { restaurante, notaPrevista, explicacao } = recomendacao;
 
   return (
-    <Pressable
+    <Tocavel
+      escala={0.98}
       accessibilityRole="button"
+      accessibilityLabel={`${posicao}º: ${restaurante.nome}. ${[restaurante.categoria, formatarDistancia(restaurante.distancia_m)]
+        .filter(Boolean)
+        .join(', ')}. Nota ${explicacao.tipo === 'ubcf' ? 'prevista' : 'média'} ${formatarNota(notaPrevista)}. ${explicar(recomendacao)}`}
+      accessibilityHint="Abre os detalhes do restaurante"
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? 0.92 : 1 },
       ]}>
       <View style={[styles.posicao, { backgroundColor: posicao === 1 ? theme.primary : theme.backgroundElement }]}>
-        <ThemedText type="bold" style={{ color: posicao === 1 ? theme.onPrimary : theme.textSecondary }}>
+        <ThemedText
+          type="bold"
+          maxFontSizeMultiplier={1.3}
+          style={{ color: posicao === 1 ? theme.onPrimary : theme.textSecondary }}>
           {posicao}
         </ThemedText>
       </View>
@@ -65,7 +74,7 @@ export function RecomendacaoCard({ recomendacao, posicao, onPress }: Recomendaca
           {explicacao.tipo === 'ubcf' ? 'prevista' : 'média'}
         </ThemedText>
       </View>
-    </Pressable>
+    </Tocavel>
   );
 }
 
@@ -79,9 +88,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   posicao: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    minWidth: 32,
+    minHeight: 32,
+    paddingHorizontal: Spacing.one,
+    borderRadius: Radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },

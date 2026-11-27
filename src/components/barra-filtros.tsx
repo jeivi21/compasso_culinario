@@ -41,7 +41,12 @@ export function BarraFiltros({ categorias, filtros, onChange }: BarraFiltrosProp
           Preço
         </ThemedText>
         {FAIXAS.map((f) => (
-          <Chip key={f} label={'$'.repeat(f)} selected={filtros.faixasPreco.includes(f)} onPress={() => alternarFaixa(f)} />
+          <Chip
+            key={f}
+            label={'$'.repeat(f)}
+            role="checkbox"
+            accessibilityLabel={`Faixa de preço ${f} de 4`}
+            selected={filtros.faixasPreco.includes(f)} onPress={() => alternarFaixa(f)} />
         ))}
       </View>
     </View>

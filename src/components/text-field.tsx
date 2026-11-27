@@ -1,38 +1,48 @@
+import type { Ref } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { Fonts, MinTouchTarget, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type TextFieldProps = TextInputProps & {
   label: string;
   error?: string | null;
+  /** Permite focar o campo a partir do anterior (Enter = próximo). */
+  ref?: Ref<TextInput>;
 };
 
 /** Campo de texto com rótulo e mensagem de erro, no estilo do app. */
-export function TextField({ label, error, style, ...rest }: TextFieldProps) {
+export function TextField({ label, error, style, ref, ...rest }: TextFieldProps) {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
-      <ThemedText type="label" themeColor="textSecondary">
+      {/* O rótulo visível já é lido pelo próprio campo; evita leitura duplicada. */}
+      <ThemedText
+        type="label"
+        themeColor="textSecondary"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants">
         {label}
       </ThemedText>
       <TextInput
+        ref={ref}
+        accessibilityLabel={error ? `${label}. Erro: ${error}` : label}
         placeholderTextColor={theme.textMuted}
         style={[
           styles.input,
           {
             color: theme.text,
             backgroundColor: theme.backgroundCard,
-            borderColor: error ? theme.danger : theme.border,
+            borderColor: error ? theme.danger : theme.borderStrong,
           },
           style,
         ]}
         {...rest}
       />
       {error ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="danger" accessibilityLiveRegion="polite">
           {error}
         </ThemedText>
       ) : null}
@@ -48,7 +58,8 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: 16,
     paddingHorizontal: Spacing.three,
-    paddingVertical: 14,
+    paddingVertical: Spacing.three - 2,
+    minHeight: MinTouchTarget + Spacing.two,
     borderWidth: 2,
     borderRadius: Radius.small,
   },

@@ -20,6 +20,9 @@ export type Duelo = {
   placar_desafiado: number | null;
   vencedor_id: string | null;
   rodada: number;
+  /** Quando cada jogador começou a rodada atual (anti-trapaça); null se não começou. */
+  inicio_desafiante: string | null;
+  inicio_desafiado: string | null;
   criado_em: string;
   atualizado_em: string;
   desafiante: UsuarioResumo | null;
@@ -30,8 +33,8 @@ export type Duelo = {
 
 const SELECT_DUELO =
   '*, ' +
-  'desafiante:usuario!duelo_desafiante_id_fkey(id, nome, email), ' +
-  'desafiado:usuario!duelo_desafiado_id_fkey(id, nome, email), ' +
+  'desafiante:usuario!duelo_desafiante_id_fkey(id, nome), ' +
+  'desafiado:usuario!duelo_desafiado_id_fkey(id, nome), ' +
   'restaurante_desafiante:restaurante!duelo_restaurante_desafiante_id_fkey(id, nome, categoria(nome)), ' +
   'restaurante_desafiado:restaurante!duelo_restaurante_desafiado_id_fkey(id, nome, categoria(nome))';
 
@@ -75,6 +78,12 @@ export async function cancelarDuelo(dueloId: string) {
   if (error) throw error;
 }
 
+/** Registra no banco que comecei a rodada. Só pode ser chamado uma vez por rodada. */
+export async function iniciarJogo(dueloId: string) {
+  const { error } = await supabase.rpc('iniciar_jogo', { p_duelo_id: dueloId });
+  if (error) throw error;
+}
+
 export async function registrarPlacar(dueloId: string, placar: number) {
   const { error } = await supabase.rpc('registrar_placar', {
     p_duelo_id: dueloId,
@@ -103,6 +112,13 @@ export function meuPlacar(d: Duelo, meuId: string): number | null {
   return meuLado(d, meuId) === 'desafiante' ? d.placar_desafiante : d.placar_desafiado;
 }
 
+/** Comecei a rodada atual e ainda não enviei placar (o app fechou no meio do jogo). */
+export function abandoneiRodada(d: Duelo, meuId: string): boolean {
+  const lado = meuLado(d, meuId);
+  const inicio = lado === 'desafiante' ? d.inicio_desafiante : d.inicio_desafiado;
+  return d.status === 'em_andamento' && inicio !== null && meuPlacar(d, meuId) === null;
+}
+
 export function placarAdversario(d: Duelo, meuId: string): number | null {
   return meuLado(d, meuId) === 'desafiante' ? d.placar_desafiado : d.placar_desafiante;
 }
@@ -115,6 +131,10 @@ export function traduzirErroDuelo(mensagem: string): string {
   const m = mensagem.toLowerCase();
   if (m.includes('row-level security') || m.includes('policy')) return 'Você só pode desafiar amigos.';
   if (m.includes('já jogou')) return 'Você já jogou esta rodada.';
+  if (m.includes('já começou')) return 'Você já começou esta rodada. Envie seu placar ou desista.';
+  if (m.includes('cedo demais')) return 'Placar enviado cedo demais. Jogue a partida até o fim.';
+  if (m.includes('restaurante inválido')) return 'Escolha um restaurante válido.';
+  if (m.includes('não são mais amigos')) return 'Vocês não são mais amigos.';
   if (m.includes('diferente do seu adversário')) return 'Escolha um restaurante diferente do do seu adversário.';
   if (m.includes('não está mais pendente') || m.includes('não está em andamento')) {
     return 'Este duelo mudou de estado. Atualize a tela.';

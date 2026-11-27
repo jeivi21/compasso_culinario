@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
+import { Button } from '@/components/button';
 import { MAPA_HTML, zoomParaRaio, type EstadoMapa } from '@/components/mapa-html';
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { PressedOpacity, Radius, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatarDistancia, type Coordenadas } from '@/lib/location';
@@ -46,7 +47,6 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
       selecionadoId,
       restaurantes: restaurantes.map((r) => ({
         id: r.id,
-        nome: r.nome,
         latitude: r.latitude,
         longitude: r.longitude,
         nota: formatarNota(r.media_geral),
@@ -76,26 +76,40 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
     <View style={styles.container}>
       <WebView
         ref={webview}
-        originWhitelist={['*']}
+        originWhitelist={['https://*']}
         source={{ html: MAPA_HTML, baseUrl: 'https://localhost/' }}
         onMessage={aoReceber}
         onError={() => setErro(true)}
+        // Só a própria página carrega dentro do mapa; links (atribuição do OSM) abrem no navegador.
+        onShouldStartLoadWithRequest={(req) => {
+          if (req.url.startsWith('https://localhost')) return true;
+          if (req.url.startsWith('https://')) Linking.openURL(req.url).catch(() => {});
+          return false;
+        }}
         javaScriptEnabled
-        domStorageEnabled
-        mixedContentMode="always"
         setSupportMultipleWindows={false}
         overScrollMode="never"
         style={[styles.mapa, { backgroundColor: theme.background }]}
       />
 
       {!pronto ? (
-        <View style={[styles.carregando, { backgroundColor: theme.background }]} pointerEvents="none">
+        <View
+          style={[styles.carregando, { backgroundColor: theme.background }]}
+          pointerEvents={erro ? 'auto' : 'none'}>
           {erro ? (
             <>
               <Ionicons name="cloud-offline-outline" size={48} color={theme.textMuted} />
-              <ThemedText themeColor="textSecondary" style={styles.carregandoTexto}>
+              <ThemedText themeColor="textSecondary" style={styles.carregandoTexto} accessibilityRole="alert">
                 O mapa não carregou. Verifique sua conexão ou use a lista.
               </ThemedText>
+              <Button
+                title="Tentar de novo"
+                variant="secondary"
+                onPress={() => {
+                  setErro(false);
+                  webview.current?.reload();
+                }}
+              />
             </>
           ) : (
             <>
@@ -110,17 +124,28 @@ export function MapaRestaurantes({ centro, raioMetros, restaurantes, onSeleciona
         accessibilityRole="button"
         accessibilityLabel="Centralizar na minha posição"
         onPress={() => webview.current?.injectJavaScript(`window.centralizar(${centro.latitude}, ${centro.longitude}, ${zoom}); true;`)}
-        style={[styles.botaoCentro, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
+        style={({ pressed }) => [
+          styles.botaoCentro,
+          { backgroundColor: theme.backgroundCard, borderColor: theme.borderStrong, opacity: pressed ? PressedOpacity : 1 },
+        ]}>
         <Ionicons name="locate" size={22} color={theme.primaryDark} />
       </Pressable>
 
       {selecionado ? (
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`${selecionado.nome}. ${[
+            selecionado.categoria,
+            formatarDistancia(selecionado.distancia_m),
+            selecionado.total_avaliacoes === 0 ? 'sem avaliações' : `nota ${formatarNota(selecionado.media_geral)}`,
+          ]
+            .filter(Boolean)
+            .join(', ')}`}
+          accessibilityHint="Abre os detalhes do restaurante"
           onPress={() => onSelecionar?.(selecionado)}
           style={({ pressed }) => [
             styles.card,
-            { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? 0.9 : 1 },
+            { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? PressedOpacity : 1 },
           ]}>
           <View style={styles.cardTexto}>
             <ThemedText type="bold" numberOfLines={1}>

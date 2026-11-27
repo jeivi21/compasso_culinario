@@ -10,9 +10,13 @@ export type ThemedTextProps = TextProps & {
 
 export function ThemedText({ style, type = 'default', themeColor, ...rest }: ThemedTextProps) {
   const theme = useTheme();
+  // O título da tela vira cabeçalho para leitores de tela (navegação por títulos).
+  // Subtítulos e números grandes passam `accessibilityRole` explicitamente quando for o caso.
+  const papel = type === 'title' ? 'header' : undefined;
 
   return (
     <Text
+      accessibilityRole={papel}
       style={[
         { color: theme[themeColor ?? (type === 'link' ? 'primaryDark' : 'text')] },
         styles[type],
@@ -49,12 +53,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  // Rótulos e títulos de seção: Fredoka em frase normal (sem caixa alta espaçada).
   label: {
-    fontFamily: Fonts.bodyBold,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    fontFamily: Fonts.displayMedium,
+    fontSize: 15,
+    lineHeight: 20,
   },
   link: {
     fontFamily: Fonts.bodyBold,

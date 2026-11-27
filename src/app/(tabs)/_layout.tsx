@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
+import { IconePulsante } from '@/components/icone-pulsante';
 import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -10,7 +11,7 @@ type TabIconProps = { color: ColorValue; focused: boolean };
 
 function tabIcon(active: IconName, inactive: IconName) {
   function TabIcon({ color, focused }: TabIconProps) {
-    return <Ionicons name={focused ? active : inactive} size={24} color={color} />;
+    return <IconePulsante ativo={focused} repouso={1.08} pico={1.22} name={focused ? active : inactive} size={24} color={color} />;
   }
   return TabIcon;
 }
@@ -22,6 +23,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Esconde a barra de abas enquanto o teclado está aberto (busca de amigos).
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: theme.primaryDark,
         tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {

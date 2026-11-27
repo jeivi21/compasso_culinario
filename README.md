@@ -22,14 +22,14 @@ Projeto de conclusão da disciplina de Desenvolvimento Mobile — Sistemas de In
 | Perfil com atalho para as próprias avaliações | `src/app/(tabs)/perfil.tsx` |
 | Modo claro e escuro, tela de erro global e rota 404 | `src/constants/theme.ts`, `src/components/tela-erro.tsx`, `src/app/+not-found.tsx` |
 
-Validações: e-mail, senha (mínimo 6), confirmação de senha, nome, as quatro notas obrigatórias (1–5) e comentário até 500 caracteres. Erros de rede e de permissão mostram mensagem e botão de nova tentativa.
+Validações: e-mail, senha (mínimo 8), confirmação de senha, nome, as quatro notas obrigatórias (1–5) e comentário até 500 caracteres. Erros de rede e de permissão mostram mensagem e botão de nova tentativa.
 
 ## Tecnologias
 
 | Camada | Tecnologia |
 |---|---|
 | App | React Native 0.86 + Expo SDK 57, TypeScript, Expo Router (rotas protegidas por sessão) |
-| Backend | Supabase: Auth (e-mail/senha), PostgreSQL 17 + PostGIS, Row Level Security |
+| Backend | Supabase: Auth (e-mail/senha), PostgreSQL 17 + PostGIS, Row Level Security; sessão cifrada no aparelho (`expo-secure-store` + AES-GCM do `expo-crypto`) |
 | Mapa e localização | Leaflet em WebView com tiles do OpenStreetMap (sem chave de API), `expo-location` |
 | Dados dos restaurantes | OpenStreetMap (Overpass API) + cadastro manual no seed |
 | Recomendação | UBCF em TypeScript puro (`src/lib/ubcf.ts`), executado no app |
@@ -75,6 +75,7 @@ Esquema completo em `supabase/migrations/20261015120000_schema_inicial.sql`:
 - função `restaurantes_proximos(lat, lng, raio_m)` faz a busca por raio com PostGIS;
 - view `restaurante_resumo` agrega total e médias por critério;
 - RLS em todas as tabelas: catálogo e avaliações são públicos para leitura; cada usuário só cria, edita e exclui as próprias avaliações e favoritos.
+- `20261119120000_seguranca.sql`: o e-mail dos outros usuários não é legível pelo app (privilégio por coluna), só o destinatário responde a um pedido de amizade, o update direto de `duelo` só serve para recusar/cancelar (aceitar e pontuar passam pelas funções) e o placar é validado em 0–100.
 
 ## Como executar
 
@@ -90,7 +91,9 @@ Pré-requisitos: Node.js 20+, um projeto no [Supabase](https://supabase.com) e o
 
    ```bash
    npx supabase login
-   npx supabase db query --linked --project-ref SEU_PROJECT_REF -f supabase/migrations/20261015120000_schema_inicial.sql
+   for f in supabase/migrations/*.sql; do
+     npx supabase db query --linked --project-ref SEU_PROJECT_REF -f "$f"
+   done
    npx supabase db query --linked --project-ref SEU_PROJECT_REF -f supabase/seed.sql
    ```
 

@@ -1,10 +1,10 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
 import {
+  AccessibilityInfo,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -18,6 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/lib/auth-context';
+import { confirmar } from '@/lib/confirmar';
 import {
   atualizarAvaliacao,
   buscarMinhaAvaliacao,
@@ -36,18 +37,6 @@ const CRITERIOS: { chave: keyof Omit<NotasAvaliacao, 'comentario'>; label: strin
 
 const COMENTARIO_MAX = 500;
 
-/** Confirmação que funciona no web (Alert.alert não tem botões no navegador). */
-function confirmar(titulo: string, mensagem: string, aoConfirmar: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${titulo}\n\n${mensagem}`)) aoConfirmar();
-    return;
-  }
-  Alert.alert(titulo, mensagem, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: aoConfirmar },
-  ]);
-}
-
 /** Volta para os detalhes; se a tela foi aberta direto por URL, não há histórico. */
 function voltarParaDetalhes(restauranteId: string) {
   if (router.canGoBack()) {
@@ -62,6 +51,8 @@ export default function AvaliarScreen() {
   const { session } = useAuth();
   const { id: restauranteId } = useLocalSearchParams<{ id: string }>();
   const usuarioId = session?.user.id;
+  // A tela tem cabeçalho: o KeyboardAvoidingView precisa descontar a altura dele.
+  const alturaCabecalho = useHeaderHeight();
 
   const [existente, setExistente] = useState<Avaliacao | null | undefined>(undefined);
   const [notas, setNotas] = useState({ comida: 0, atendimento: 0, preco: 0, ambiente: 0 });
@@ -98,7 +89,9 @@ export default function AvaliarScreen() {
   async function salvar() {
     if (!usuarioId) return;
     if (faltando.length > 0) {
-      setErro(`Dê uma nota para: ${faltando.join(', ')}.`);
+      const msg = `Dê uma nota para: ${faltando.join(', ')}.`;
+      setErro(msg);
+      AccessibilityInfo.announceForAccessibility(msg);
       return;
     }
     setErro(null);
@@ -120,7 +113,7 @@ export default function AvaliarScreen() {
 
   function excluir() {
     if (!existente) return;
-    confirmar('Excluir avaliação', 'Sua avaliação deste restaurante será apagada.', async () => {
+    confirmar('Excluir avaliação', 'Sua avaliação deste restaurante será apagada.', 'Excluir', async () => {
       setExcluindo(true);
       try {
         await excluirAvaliacao(existente.id);
@@ -154,11 +147,11 @@ export default function AvaliarScreen() {
           <ActivityIndicator color={theme.primary} size="large" />
         </View>
       ) : (
-        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={styles.flex} behavior="padding" keyboardVerticalOffset={alturaCabecalho}>
           <ScrollView contentContainerStyle={styles.conteudo} keyboardShouldPersistTaps="handled">
             {CRITERIOS.map((c) => (
               <View key={c.chave} style={[styles.criterio, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
-                <View style={styles.flex}>
+                <View>
                   <ThemedText type="bold">{c.label}</ThemedText>
                   <ThemedText type="small" themeColor="textMuted">
                     {c.dica}
@@ -167,6 +160,7 @@ export default function AvaliarScreen() {
                 <Estrelas
                   valor={notas[c.chave]}
                   tamanho={30}
+                  rotulo={c.label}
                   onChange={(v) => setNotas((n) => ({ ...n, [c.chave]: v }))}
                 />
               </View>
@@ -180,20 +174,25 @@ export default function AvaliarScreen() {
             </View>
 
             <View style={styles.campo}>
-              <ThemedText type="label" themeColor="textSecondary">
+              <ThemedText
+                type="label"
+                themeColor="textSecondary"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants">
                 Comentário (opcional)
               </ThemedText>
               <TextInput
                 value={comentario}
                 onChangeText={(t) => setComentario(t.slice(0, COMENTARIO_MAX))}
                 placeholder="Conte como foi sua experiência"
+                accessibilityLabel="Comentário (opcional)"
                 placeholderTextColor={theme.textMuted}
                 multiline
                 numberOfLines={4}
                 maxLength={COMENTARIO_MAX}
                 style={[
                   styles.textarea,
-                  { color: theme.text, backgroundColor: theme.backgroundCard, borderColor: theme.border },
+                  { color: theme.text, backgroundColor: theme.backgroundCard, borderColor: theme.borderStrong },
                 ]}
               />
               <ThemedText type="small" themeColor="textMuted" style={styles.contador}>
@@ -202,7 +201,11 @@ export default function AvaliarScreen() {
             </View>
 
             {erro ? (
-              <ThemedText themeColor="danger" style={styles.erro}>
+              <ThemedText
+                themeColor="danger"
+                style={styles.erro}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite">
                 {erro}
               </ThemedText>
             ) : null}
@@ -216,7 +219,7 @@ export default function AvaliarScreen() {
             {existente ? (
               <Button
                 title="Excluir avaliação"
-                variant="ghost"
+                variant="danger"
                 onPress={excluir}
                 loading={excluindo}
                 disabled={salvando}
@@ -243,9 +246,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   criterio: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
+    // Rótulo acima das estrelas: cabe em telas de 320pt e com fonte grande.
+    gap: Spacing.two,
     padding: Spacing.three,
     borderRadius: Radius.medium,
     borderWidth: 1,

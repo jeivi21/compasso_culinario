@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
+import { IconButton } from '@/components/icon-button';
 import { MapaRestaurantes } from '@/components/mapa-restaurantes';
 import { RestauranteCard } from '@/components/restaurante-card';
 import { Screen } from '@/components/screen';
@@ -43,6 +44,7 @@ export default function MapaScreen() {
   const chave = `${coords.latitude},${coords.longitude},${raio}`;
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const [atualizando, setAtualizando] = useState(false);
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
@@ -67,7 +69,8 @@ export default function MapaScreen() {
         () =>
           ativo &&
           setResultado({ chave, dados: [], erro: 'Não foi possível carregar os restaurantes. Verifique sua conexão.' }),
-      );
+      )
+      .finally(() => ativo && setAtualizando(false));
     return () => {
       ativo = false;
     };
@@ -96,14 +99,14 @@ export default function MapaScreen() {
         <ThemedText type="title">Perto de você</ThemedText>
         <View style={[styles.alternador, { backgroundColor: theme.backgroundElement }]}>
           {(['lista', 'mapa'] as Visao[]).map((v) => (
-            <Ionicons
+            <IconButton
               key={v}
-              name={v === 'lista' ? 'list' : 'map'}
-              size={22}
+              icon={v === 'lista' ? 'list' : 'map'}
               color={visao === v ? theme.onPrimary : theme.textSecondary}
-              accessibilityRole="button"
+              backgroundColor={visao === v ? theme.primary : 'transparent'}
               accessibilityLabel={v === 'lista' ? 'Ver em lista' : 'Ver no mapa'}
-              style={[styles.alternadorBotao, visao === v && { backgroundColor: theme.primary }]}
+              accessibilityState={{ selected: visao === v }}
+              style={styles.alternadorBotao}
               onPress={() => setVisao(v)}
             />
           ))}
@@ -111,13 +114,18 @@ export default function MapaScreen() {
       </View>
       <View style={styles.chips}>
         {RAIOS.map((r) => (
-          <Chip key={r.metros} label={r.label} selected={raio === r.metros} onPress={() => setRaio(r.metros)} />
+          <Chip
+            key={r.metros}
+            label={r.label}
+            role="radio"
+            accessibilityLabel={`Raio de ${r.label}`}
+            selected={raio === r.metros}
+            onPress={() => setRaio(r.metros)}
+          />
         ))}
-        <Ionicons
-          name={filtrosAtivos ? 'options' : 'options-outline'}
+        <IconButton
+          icon={filtrosAtivos ? 'options' : 'options-outline'}
           size={24}
-          color={theme.primaryDark}
-          accessibilityRole="button"
           accessibilityLabel={mostrarFiltros ? 'Esconder filtros' : 'Mostrar filtros'}
           accessibilityState={{ expanded: mostrarFiltros }}
           style={styles.botaoFiltros}
@@ -174,7 +182,18 @@ export default function MapaScreen() {
         )}
         contentContainerStyle={styles.lista}
         ItemSeparatorComponent={() => <View style={styles.separador} />}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={carregar} tintColor={theme.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={atualizando}
+            // Mantém a lista na tela enquanto atualiza (sem trocar pelo carregamento central).
+            onRefresh={() => {
+              setAtualizando(true);
+              setTentativa((t) => t + 1);
+            }}
+            tintColor={theme.primary}
+            colors={[theme.primaryDark]}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.centro}>
             <Ionicons name="restaurant-outline" size={48} color={theme.textMuted} />
@@ -217,9 +236,7 @@ const styles = StyleSheet.create({
     padding: Spacing.half,
   },
   alternadorBotao: {
-    padding: Spacing.two,
     borderRadius: Radius.small - 2,
-    overflow: 'hidden',
   },
   chips: {
     flexDirection: 'row',
@@ -229,7 +246,6 @@ const styles = StyleSheet.create({
   },
   botaoFiltros: {
     marginLeft: 'auto',
-    padding: Spacing.one,
   },
   aviso: {
     flexDirection: 'row',

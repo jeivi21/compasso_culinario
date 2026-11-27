@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Tocavel } from '@/components/tocavel';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatarDistancia } from '@/lib/location';
@@ -17,12 +18,25 @@ export function RestauranteCard({ restaurante, onPress }: RestauranteCardProps) 
   const faixa = formatarFaixaPreco(restaurante.faixa_preco);
 
   return (
-    <Pressable
+    <Tocavel
+      escala={0.98}
       accessibilityRole="button"
+      accessibilityLabel={[
+        restaurante.nome,
+        restaurante.categoria,
+        faixa ? `preço ${faixa.length} de 4` : null,
+        restaurante.total_avaliacoes > 0
+          ? `nota ${formatarNota(restaurante.media_geral)}, ${restaurante.total_avaliacoes} ${restaurante.total_avaliacoes > 1 ? 'avaliações' : 'avaliação'}`
+          : 'sem avaliações',
+        `a ${formatarDistancia(restaurante.distancia_m)}`,
+      ]
+        .filter(Boolean)
+        .join(', ')}
+      accessibilityHint="Abre os detalhes do restaurante"
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: theme.backgroundCard, borderColor: theme.border, opacity: pressed ? 0.92 : 1 },
       ]}>
       <View style={styles.header}>
         <ThemedText type="bold" style={styles.nome} numberOfLines={1}>
@@ -50,7 +64,7 @@ export function RestauranteCard({ restaurante, onPress }: RestauranteCardProps) 
           </ThemedText>
         ) : null}
       </View>
-    </Pressable>
+    </Tocavel>
   );
 }
 

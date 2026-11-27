@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 export type Perfil = {
   id: string;
   nome: string;
-  email: string | null;
   onboarding_concluido: boolean;
 };
 
@@ -18,6 +17,8 @@ type AuthContextValue = {
   /** `true` enquanto a sessão salva (e o perfil) ainda estão sendo restaurados. */
   isLoading: boolean;
   signOut: () => Promise<void>;
+  /** Apaga a conta do usuário logado (e todos os dados dele) e encerra a sessão local. */
+  excluirConta: () => Promise<void>;
   /** Marca o onboarding como concluído no banco e no estado local. */
   concluirOnboarding: () => Promise<void>;
   /** Recarrega o perfil do banco (depois de editar o nome, por exemplo). */
@@ -42,7 +43,7 @@ async function carregarPerfil(usuarioId: string): Promise<Perfil | null> {
   try {
     const { data } = await supabase
       .from('usuario')
-      .select('id, nome, email, onboarding_concluido')
+      .select('id, nome, onboarding_concluido')
       .eq('id', usuarioId)
       .maybeSingle();
     return data;
@@ -109,6 +110,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         isLoading,
         signOut: async () => {
           await supabase.auth.signOut();
+        },
+        excluirConta: async () => {
+          const { error } = await supabase.rpc('excluir_minha_conta');
+          if (error) throw error;
+          // O usuário já não existe no servidor: só limpa a sessão do aparelho.
+          await supabase.auth.signOut({ scope: 'local' });
         },
         concluirOnboarding,
         recarregarPerfil,

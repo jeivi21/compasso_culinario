@@ -2,7 +2,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { Bussola } from '@/components/bussola';
 import { Button } from '@/components/button';
 import { RecomendacaoCard } from '@/components/recomendacao-card';
 import { Screen } from '@/components/screen';
@@ -37,7 +39,10 @@ export default function ParaVoceScreen() {
           setResultado(r);
           setErro(null);
         })
-        .catch(() => ativo && setErro('Não foi possível gerar as recomendações. Verifique sua conexão.'))
+        .catch((e) => {
+          if (__DEV__) console.warn('[recomendar] falhou:', e);
+          if (ativo) setErro('Não foi possível gerar as recomendações. Verifique sua conexão.');
+        })
         .finally(() => ativo && setAtualizando(false));
       return () => {
         ativo = false;
@@ -54,6 +59,7 @@ export default function ParaVoceScreen() {
 
   const carregando = resultado === null && !erro;
   const faltam = resultado ? Math.max(0, MIN_AVALIACOES - resultado.totalAvaliacoesDoUsuario) : 0;
+  const primeiro = resultado?.recomendacoes[0];
 
   const cabecalho = (
     <View style={styles.cabecalho}>
@@ -67,8 +73,17 @@ export default function ParaVoceScreen() {
         <ThemedText themeColor="textSecondary">
           Previsões feitas a partir de usuários com gosto parecido com o seu.
         </ThemedText>
-      ) : resultado ? (
-        <View style={[styles.aviso, { backgroundColor: theme.backgroundElement }]}>
+      ) : null}
+      {primeiro ? (
+        <Bussola
+          origem={coords}
+          destino={primeiro.restaurante}
+          usarSensor={estadoLocalizacao === 'ok'}
+          onPress={() => router.push(`/restaurante/${primeiro.restaurante.id}`)}
+        />
+      ) : null}
+      {resultado && resultado.modo !== 'ubcf' ? (
+        <View style={[styles.aviso, { borderColor: theme.borderStrong }]}>
           <Ionicons name="sparkles-outline" size={20} color={theme.primaryDark} />
           <View style={styles.avisoTexto}>
             <ThemedText type="bold">Recomendações personalizadas em breve</ThemedText>
@@ -113,11 +128,14 @@ export default function ParaVoceScreen() {
           ItemSeparatorComponent={() => <View style={styles.separador} />}
           refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor={theme.primary} />}
           renderItem={({ item, index }) => (
-            <RecomendacaoCard
-              recomendacao={item}
-              posicao={index + 1}
-              onPress={() => router.push(`/restaurante/${item.restaurante.id}`)}
-            />
+            // Entrada escalonada só na primeira carga (itens já montados não reanimam).
+            <Animated.View entering={index < 6 ? FadeInDown.delay(120 + index * 55).duration(320) : undefined}>
+              <RecomendacaoCard
+                recomendacao={item}
+                posicao={index + 1}
+                onPress={() => router.push(`/restaurante/${item.restaurante.id}`)}
+              />
+            </Animated.View>
           )}
           ListEmptyComponent={
             <View style={styles.centro}>
@@ -135,11 +153,14 @@ export default function ParaVoceScreen() {
 
 const styles = StyleSheet.create({
   cabecalho: {
-    gap: Spacing.two,
+    gap: Spacing.three,
     paddingTop: Spacing.three,
     paddingBottom: Spacing.three,
   },
   aviso: {
+    // Tracejado: algo que ainda vai acontecer (personalização pendente).
+    borderWidth: 1,
+    borderStyle: 'dashed',
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.two,

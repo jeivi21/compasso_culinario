@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -13,15 +15,24 @@ type NotaCriterioProps = {
 /** Linha "Comida ▇▇▇▇░ 4,2" usada no resumo de notas por critério. */
 export function NotaCriterio({ label, nota }: NotaCriterioProps) {
   const theme = useTheme();
-  const largura = nota ? `${(Number(nota) / 5) * 100}%` : '0%';
+  const alvo = nota ? (Number(nota) / 5) * 100 : 0;
+  // A barra cresce até a nota ao abrir a tela: mostra a comparação entre critérios.
+  const largura = useSharedValue(0);
+  useEffect(() => {
+    largura.set(withDelay(150, withTiming(alvo, { duration: 650, easing: Easing.out(Easing.cubic) })));
+  }, [alvo, largura]);
+  const estiloBarra = useAnimatedStyle(() => ({ width: `${largura.get()}%` }));
 
   return (
-    <View style={styles.linha}>
+    <View
+      style={styles.linha}
+      accessible
+      accessibilityLabel={`${label}: ${nota ? `${formatarNota(nota)} de 5` : 'sem nota'}`}>
       <ThemedText type="small" style={styles.label}>
         {label}
       </ThemedText>
       <View style={[styles.trilho, { backgroundColor: theme.backgroundElement }]}>
-        <View style={[styles.barra, { width: largura as `${number}%`, backgroundColor: theme.primary }]} />
+        <Animated.View style={[styles.barra, { backgroundColor: theme.primaryDark }, estiloBarra]} />
       </View>
       <ThemedText type="bold" style={styles.valor}>
         {formatarNota(nota)}
@@ -37,7 +48,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   label: {
-    width: 96,
+    // minWidth em vez de width: com fonte grande o rótulo cresce em vez de cortar.
+    minWidth: 96,
   },
   trilho: {
     flex: 1,
@@ -50,7 +62,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
   },
   valor: {
-    width: 36,
+    minWidth: 36,
     textAlign: 'right',
   },
 });

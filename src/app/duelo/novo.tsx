@@ -25,17 +25,19 @@ export default function NovoDueloScreen() {
   const [restaurante, setRestaurante] = useState<RestauranteProximo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [erroAmigos, setErroAmigos] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     if (!meuId) return;
     let ativo = true;
     listarVinculos(meuId)
       .then((v) => ativo && setAmigos(v.filter((x) => x.status === 'aceita')))
-      .catch(() => ativo && setErro('Não foi possível carregar seus amigos.'));
+      .catch(() => ativo && setErroAmigos(true));
     return () => {
       ativo = false;
     };
-  }, [meuId]);
+  }, [meuId, tentativa]);
 
   async function desafiar() {
     if (!meuId || !amigoSelecionado || !restaurante || enviando) return;
@@ -55,10 +57,24 @@ export default function NovoDueloScreen() {
       <Stack.Screen options={{ title: 'Novo duelo' }} />
       <View style={styles.conteudo}>
         <View style={styles.passo}>
-          <ThemedText type="label" themeColor="primaryDark">
+          <ThemedText type="label" themeColor="primaryDark" accessibilityRole="header">
             1 · Quem você desafia?
           </ThemedText>
-          {amigos === null ? (
+          {erroAmigos ? (
+            <View style={styles.linhaErro}>
+              <ThemedText themeColor="danger" accessibilityRole="alert" style={styles.flex}>
+                Não foi possível carregar seus amigos.
+              </ThemedText>
+              <Button
+                title="Tentar de novo"
+                variant="secondary"
+                onPress={() => {
+                  setErroAmigos(false);
+                  setTentativa((t) => t + 1);
+                }}
+              />
+            </View>
+          ) : amigos === null ? (
             <ThemedText themeColor="textSecondary">Carregando amigos…</ThemedText>
           ) : amigos.length === 0 ? (
             <ThemedText themeColor="textSecondary">Você ainda não tem amigos. Adicione alguém na aba Amigos.</ThemedText>
@@ -90,15 +106,25 @@ export default function NovoDueloScreen() {
         </View>
 
         <View style={[styles.passo, styles.flex]}>
-          <ThemedText type="label" themeColor="primaryDark">
+          <ThemedText type="label" themeColor="primaryDark" accessibilityRole="header">
             2 · Qual restaurante você defende?
           </ThemedText>
           <SeletorRestaurante selecionadoId={restaurante?.id ?? null} onSelecionar={setRestaurante} />
         </View>
 
-        {erro ? <ThemedText themeColor="danger">{erro}</ThemedText> : null}
+        {erro ? (
+          <ThemedText themeColor="danger" accessibilityRole="alert" accessibilityLiveRegion="polite">
+            {erro}
+          </ThemedText>
+        ) : null}
         <Button
-          title={restaurante ? `Desafiar com ${restaurante.nome}` : 'Desafiar'}
+          title={
+            !amigoSelecionado
+              ? 'Escolha quem desafiar'
+              : !restaurante
+                ? 'Escolha seu restaurante'
+                : `Desafiar com ${restaurante.nome}`
+          }
           onPress={desafiar}
           disabled={!amigoSelecionado || !restaurante}
           loading={enviando}
@@ -109,6 +135,11 @@ export default function NovoDueloScreen() {
 }
 
 const styles = StyleSheet.create({
+  linhaErro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   conteudo: {
     flex: 1,
     gap: Spacing.three,

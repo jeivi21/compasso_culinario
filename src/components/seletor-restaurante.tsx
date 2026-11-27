@@ -41,12 +41,14 @@ export function SeletorRestaurante({ selecionadoId, onSelecionar, bloqueadoId }:
 
   return (
     <View style={styles.container}>
-      <View style={[styles.busca, { backgroundColor: theme.backgroundCard, borderColor: theme.border }]}>
+      <View style={[styles.busca, { backgroundColor: theme.backgroundCard, borderColor: theme.borderStrong }]}>
         <Ionicons name="search" size={20} color={theme.textMuted} />
         <TextInput
           value={termo}
           onChangeText={setTermo}
           placeholder="Buscar restaurante"
+          accessibilityLabel="Buscar restaurante"
+          returnKeyType="search"
           placeholderTextColor={theme.textMuted}
           style={[styles.buscaInput, { color: theme.text }]}
         />

@@ -1,6 +1,6 @@
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { AuthHeader } from '@/components/auth-header';
 import { Button } from '@/components/button';
@@ -27,6 +27,9 @@ export default function CadastroScreen() {
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const emailRef = useRef<TextInput>(null);
+  const senhaRef = useRef<TextInput>(null);
+  const confirmacaoRef = useRef<TextInput>(null);
 
   async function cadastrar() {
     if (enviando) return; // evita dois signUp com Enter repetido
@@ -61,9 +64,8 @@ export default function CadastroScreen() {
 
   return (
     <Screen edges={['top', 'bottom', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Apps Expo são edge-to-edge: a janela não encolhe com o teclado, então o padding é preciso nas duas plataformas. */}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <AuthHeader title="Criar conta" subtitle="Leva menos de um minuto." />
 
@@ -76,8 +78,12 @@ export default function CadastroScreen() {
               placeholder="Como quer ser chamado"
               autoComplete="name"
               textContentType="name"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => emailRef.current?.focus()}
             />
             <TextField
+              ref={emailRef}
               label="E-mail"
               value={email}
               onChangeText={setEmail}
@@ -87,18 +93,26 @@ export default function CadastroScreen() {
               autoCapitalize="none"
               autoComplete="email"
               textContentType="emailAddress"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => senhaRef.current?.focus()}
             />
             <TextField
+              ref={senhaRef}
               label="Senha"
               value={senha}
               onChangeText={setSenha}
               error={erros.senha}
-              placeholder="Mínimo de 6 caracteres"
+              placeholder="Mínimo de 8 caracteres"
               secureTextEntry
               autoComplete="new-password"
               textContentType="newPassword"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => confirmacaoRef.current?.focus()}
             />
             <TextField
+              ref={confirmacaoRef}
               label="Confirmar senha"
               value={confirmacao}
               onChangeText={setConfirmacao}
@@ -107,6 +121,7 @@ export default function CadastroScreen() {
               secureTextEntry
               autoComplete="new-password"
               textContentType="newPassword"
+              returnKeyType="go"
               onSubmitEditing={cadastrar}
             />
             {erroGeral ? (

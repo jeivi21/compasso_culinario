@@ -48,8 +48,10 @@ export function Cabo({ onFim, contexto }: PropsJogo) {
 
   // Canal do duelo: presença + broadcast.
   useEffect(() => {
+    // Canal privado: o Realtime só deixa entrar os dois participantes do duelo
+    // (políticas em realtime.messages, migração 20261127130000).
     const c = supabase.channel(`cabo-${dueloId}`, {
-      config: { presence: { key: lado }, broadcast: { self: false } },
+      config: { private: true, presence: { key: lado }, broadcast: { self: false } },
     });
     canal.current = c;
 
@@ -68,21 +70,39 @@ export function Cabo({ onFim, contexto }: PropsJogo) {
     })
       .on('broadcast', { event: 'jogo' }, ({ payload }) => {
         const m = payload as Mensagem;
-        if (m.tipo === 'inicio' && comecaEm.current === null) {
+        // Mensagens do canal vêm de outro cliente: só aceita um início plausível
+        // (até 10 s de diferença do relógio local) para não travar ou adiantar a partida.
+        if (
+          m.tipo === 'inicio' &&
+          comecaEm.current === null &&
+          typeof m.comecaEm === 'number' &&
+          Math.abs(m.comecaEm - Date.now()) <= CONTAGEM_MS + 10_000
+        ) {
           comecaEm.current = m.comecaEm;
           setFase('contagem');
         } else if (m.tipo === 'puxar' && m.lado !== lado) {
           setDele((d) => d + 1);
         }
-      })
-      .subscribe(async (status) => {
+      });
+
+    // Canal privado precisa do JWT do usuário no Realtime antes de entrar.
+    let cancelado = false;
+    supabase.realtime.setAuth().finally(() => {
+      if (cancelado) return;
+      c.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await c.track({ lado, em: Date.now() });
           setFase((f) => (f === 'conectando' ? 'esperando' : f));
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          // Sem tempo real: libera jogar sozinho em vez de travar em "conectando".
+          setFase((f) => (f === 'conectando' ? 'esperando' : f));
+          setEsperaEsgotada(true);
         }
       });
+    });
 
     return () => {
+      cancelado = true;
       supabase.removeChannel(c);
     };
   }, [dueloId, lado]);
@@ -138,6 +158,8 @@ export function Cabo({ onFim, contexto }: PropsJogo) {
   const deslocamento = Math.max(-LARGURA_CORDA / 2, Math.min(LARGURA_CORDA / 2, (meus - dele) * 6));
   const corEu = theme.primary;
   const corEle = theme.danger;
+  const textoEu = theme.onPrimary;
+  const textoEle = theme.onDanger;
 
   if (fase === 'conectando' || fase === 'esperando') {
     return (
@@ -180,12 +202,12 @@ export function Cabo({ onFim, contexto }: PropsJogo) {
         style={[estilosJogo.area, styles.areaToque, { backgroundColor: fase === 'jogando' ? theme.backgroundElement : 'transparent' }]}>
         <View style={styles.pista}>
           <View style={[styles.lado, { backgroundColor: corEu }]}>
-            <ThemedText type="bold" style={styles.ladoTexto}>
+            <ThemedText type="bold" style={{ color: textoEu }}>
               Você
             </ThemedText>
           </View>
           <View style={[styles.lado, { backgroundColor: corEle }]}>
-            <ThemedText type="bold" style={styles.ladoTexto}>
+            <ThemedText type="bold" style={{ color: textoEle }}>
               {primeiroNome}
             </ThemedText>
           </View>
@@ -194,7 +216,7 @@ export function Cabo({ onFim, contexto }: PropsJogo) {
             <ThemedText style={styles.noTexto}>🪢</ThemedText>
           </View>
         </View>
-        <ThemedText type="title" style={styles.contagem}>
+        <ThemedText type="title" style={styles.contagem} accessibilityRole="text" accessibilityLiveRegion="polite">
           {fase === 'contagem' ? restante : fase === 'fim' ? (meus > dele ? 'Puxou mais!' : meus < dele ? 'Perdeu a força…' : 'Empate!') : ''}
         </ThemedText>
       </Pressable>
@@ -229,10 +251,6 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.85,
-  },
-  ladoTexto: {
-    color: '#F3FBF9',
   },
   marcaCentro: {
     position: 'absolute',

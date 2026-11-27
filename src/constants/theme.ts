@@ -7,30 +7,38 @@ export const Colors = {
   light: {
     text: '#0E2E2B',
     textSecondary: '#3F5F5B',
-    textMuted: '#6F8F8A',
+    textMuted: '#486C66',
     background: '#F3FBF9',
     backgroundElement: '#DDF2EE',
     backgroundCard: '#FAFFFE',
+    /** Contorno decorativo de cards. */
     border: '#A8D5CE',
+    /** Contorno de campos de entrada (≥ 3:1 com o fundo, WCAG 1.4.11). */
+    borderStrong: '#5E8A83',
     primary: '#2EC4B6',
-    primaryDark: '#0B7A70',
+    primaryDark: '#097068',
     onPrimary: '#0E2E2B',
     danger: '#B23A48',
-    star: '#F2B705',
+    onDanger: '#FFFFFF',
+    star: '#A87A00',
+    overlay: 'rgba(14, 46, 43, 0.55)',
   },
   dark: {
     text: '#F3FBF9',
     textSecondary: '#CDE9E4',
-    textMuted: '#8FB5AF',
+    textMuted: '#9CC3BD',
     background: '#0E2E2B',
     backgroundElement: '#173F3B',
     backgroundCard: '#1C4945',
     border: '#2A5C57',
+    borderStrong: '#609E97',
     primary: '#2EC4B6',
     primaryDark: '#7FE0D4',
     onPrimary: '#0E2E2B',
-    danger: '#F28B82',
+    danger: '#F7A39C',
+    onDanger: '#0E2E2B',
     star: '#F2B705',
+    overlay: 'rgba(0, 0, 0, 0.6)',
   },
 } as const;
 
@@ -64,3 +72,9 @@ export const Radius = {
 } as const;
 
 export const MaxContentWidth = 800;
+
+/** Opacidade padrão de qualquer elemento tocável enquanto pressionado. */
+export const PressedOpacity = 0.75;
+
+/** Área mínima de toque (pt), conforme HIG/Material. */
+export const MinTouchTarget = 44;
